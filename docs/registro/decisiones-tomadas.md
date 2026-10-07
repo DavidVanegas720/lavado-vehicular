@@ -87,9 +87,39 @@ Node 24 para FP-0. La enmienda formal de D-01 sigue en H-02.
 **Fecha / tarea:** 2026-10-07 · FP-0 · **Por qué:** los agentes y el revisor necesitan el plan en el repo
 (H-05); David lo aceptó. La confirmación formal sigue en H-05.
 
+### DM-19 — Prettier ignora la documentación redactada a mano
+**Fecha / tarea:** 2026-10-07 · FP-0 · `docs/`, `.plan/`, `CLAUDE.md`, `PROMPT-INICIAL.md` en `.prettierignore`.
+**Por qué:** formatearlos reescribe tablas y diluye los diffs de docs (E-012).
+
+### DM-20 — TypeScript fijado en `~6.0.3`
+**Fecha / tarea:** 2026-10-07 · FP-0 · **Por qué:** TS 7 rompe `vue-tsc` y excede el peer de `typescript-eslint` (E-010).
+
+### DM-21 — Un solo archivo de pruebas de esquemas con fixtures compartidos
+**Fecha / tarea:** 2026-10-07 · FP-0 · `esquemas/esquemas.test.ts` + `fixtures.ts` en vez de un test por archivo.
+**Por qué:** los 13 esquemas comparten fixtures; menos duplicación. Cubre todos los casos pedidos.
+
+### DM-22 — Se modelan 13 esquemas (el plan dice "12 entidades")
+**Fecha / tarea:** 2026-10-07 · FP-0 · **Por qué:** el modelo tiene 14 `model` menos `Sesion` = 13 (incl. `Negocio`).
+
 ---
 
 ## Versiones instaladas
 
-*(Completar en FP-0 paso 7: versión mayor de vue, vite, pinia, primevue, tailwind, zod, vitest,
-playwright, typescript, eslint, @sentry/vue.)*
+Instaladas el 2026-10-07 con Node v24.20.0 y pnpm 12.9.1:
+
+| Paquete | Versión |
+|---|---|
+| vue | 3.5 (vue-router 5, pinia 4) |
+| vite | 8.3 (@vitejs/plugin-vue 6) |
+| primevue | 5.0 (@primeuix/themes 3.0; ver H-09 por licencia) |
+| tailwindcss | 4.3 (+ tailwindcss-primeui 0.6) |
+| zod | 4.6 |
+| vitest | 5.0 (jsdom 30, @testing-library/vue 8) |
+| @playwright/test | 1.63 (@axe-core/playwright 4.13) |
+| typescript | 6.0.3 (fijado, DM-20; latest es 7.0) |
+| eslint | 10.12 (typescript-eslint 8.71, eslint-plugin-vue 10) |
+| prettier | 3.9 |
+| @sentry/vue | 11.4 |
+
+## DM-23 — PrimeVue fijado en ^4 (MIT), no 5 (H-09)
+PrimeVue 5 exige clave de licencia y emite `console.warn` sin ella; choca con la capa gratuita (D-21) y con la fixture E2E que falla ante errores de consola. Se fija `primevue@^4.5.5` + `@primeuix/themes@^2.0.3`. Verificado: verificar, build y e2e pasan. Revisitar si PrimeVue 4 deja de recibir parches.

@@ -1,0 +1,21 @@
+/* Orden de capas: las utilidades de Tailwind ganan a PrimeVue (guía oficial PrimeVue + Tailwind v4).
+   El mismo orden se declara en main.ts (cssLayer de PrimeVue). */
+@layer theme, base, primevue;
+
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+
+/* Modo oscuro por clase (coincide con darkModeSelector de PrimeVue). */
+@custom-variant dark (&:where(.app-oscuro, .app-oscuro *));
+
+/* Regla dura: respetar prefers-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

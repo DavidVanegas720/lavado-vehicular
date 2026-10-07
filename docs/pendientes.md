@@ -132,6 +132,13 @@ Estas son preguntas de dominio que solo se van a hacer visibles cuando alguien v
 **Cuándo se descubrió:** 2026-10-07, planificación F1-1.
 **Estado:** abierto — confirmar con Carlos antes de F1-5.
 
+### H-09 — PrimeVue 5 exige clave de licencia (Community gratuita con renovación anual)
+**Qué es:** `primevue@5` usa `@primeui/license-manager`; sin clave avisa por `console.warn`. La licencia gratuita pide cumplir criterios (ingresos, nº de devs) y confirmar elegibilidad cada año.
+**Qué se rompe si nadie lo atiende:** aviso de licencia en consola/UI y posible incumplimiento al pasar a plan pago; choca con la restricción de capa gratuita.
+**Opciones:** obtener la clave Community, o fijar `primevue@^4` (MIT, sin clave). Ver E-014.
+**Cuándo se descubrió:** 2026-10-07, FP-0 paso 5.
+**Estado:** abierto — David decide antes de F1-1.
+
 ### Plantilla de hallazgo
 
 ```markdown
