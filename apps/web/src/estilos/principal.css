@@ -30,3 +30,16 @@ body {
     background-color 150ms ease-out,
     color 150ms ease-out;
 }
+
+/* Tap targets >= 44px en los botones de cerrar de PrimeVue (por defecto miden 40px). */
+.p-drawer-close-button,
+.p-dialog-close-button,
+.p-toast-close-button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+/* El toast (25rem por defecto) no debe desbordar viewports de 375 px. */
+.p-toast {
+  max-width: calc(100vw - 1.5rem);
+}

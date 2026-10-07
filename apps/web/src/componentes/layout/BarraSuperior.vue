@@ -14,7 +14,7 @@ defineEmits<{ "alternar-menu": [] }>();
   <header class="flex h-14 items-center gap-2 border-b border-surface px-4">
     <Button
       type="button"
-      class="md:!hidden"
+      class="!size-11 md:!hidden"
       text
       rounded
       severity="secondary"

@@ -13,6 +13,7 @@ const etiqueta = computed(() =>
 <template>
   <Button
     type="button"
+    class="!size-11"
     text
     rounded
     severity="secondary"

@@ -26,7 +26,7 @@ watch(
 
 <template>
   <aside
-    class="hidden shrink-0 flex-col border-r border-surface transition-[width] duration-200 md:flex"
+    class="hidden shrink-0 flex-col border-r border-surface transition-[width] duration-200 md:sticky md:top-0 md:flex md:h-screen"
     :class="colapsada ? 'w-16' : 'w-60'"
   >
     <nav aria-label="Principal" class="flex flex-1 flex-col gap-1 p-2">
@@ -36,7 +36,7 @@ watch(
         :to="item.ruta"
         :title="colapsada ? item.etiqueta : undefined"
         :aria-label="colapsada ? item.etiqueta : undefined"
-        class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primario aria-[current=page]:text-primario-contraste"
+        class="flex items-center gap-3 min-h-11 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primario aria-[current=page]:text-primario-contraste"
         :class="colapsada ? 'justify-center' : ''"
       >
         <i :class="item.icono" aria-hidden="true" />
@@ -46,6 +46,7 @@ watch(
     <div class="p-2">
       <Button
         type="button"
+        class="!size-11"
         text
         rounded
         severity="secondary"
@@ -68,7 +69,7 @@ watch(
         v-for="item in items"
         :key="item.ruta"
         :to="item.ruta"
-        class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primario aria-[current=page]:text-primario-contraste"
+        class="flex items-center gap-3 min-h-11 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primario aria-[current=page]:text-primario-contraste"
       >
         <i :class="item.icono" aria-hidden="true" />
         <span>{{ item.etiqueta }}</span>

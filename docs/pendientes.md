@@ -151,3 +151,15 @@ Estas son preguntas de dominio que solo se van a hacer visibles cuando alguien v
 ```
 
 Máximo 10 líneas por hallazgo. Sin excepciones.
+
+### H-10 — Menores de UI al cierre de F1-1
+**Qué es:** tabla de la galería recorta una columna a 768 px; cabecera ordenable de 43,5 px; `aria-label` "Close" del Drawer en inglés; galería con varios `<h1>`.
+**Qué se rompe si nadie lo atiende:** pulido visual y accesibilidad menor; nada funcional.
+**Cuándo se descubrió:** 2026-10-07, F1-1 P5-A/P5-B.
+**Estado:** abierto.
+
+### H-11 — Modal en móvil: ¿hoja inferior o altura completa?
+**Qué es:** hoy el diálogo ocupa 100vw como hoja inferior. El plan pedía pantalla completa en móvil.
+**Qué se rompe si nadie lo atiende:** formularios largos de F1-3 (crear orden) pueden quedar incómodos en 375 px.
+**Cuándo se descubrió:** 2026-10-07, F1-1 P5-B.
+**Estado:** abierto — decide David antes de F1-3.

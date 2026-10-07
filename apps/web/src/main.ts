@@ -7,6 +7,7 @@ import { aplicarTemaInicial } from "./composables/use-tema";
 import { opcionesTema, presetLavado } from "./tema/preset";
 import App from "./App.vue";
 import "./config/entorno"; // valida el .env al arrancar y falla ruidosamente si es inválido
+import "primeicons/primeicons.css";
 import "./estilos/principal.css";
 import { iniciarObservabilidad } from "./observabilidad/sentry";
 import { router } from "./router";

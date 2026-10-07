@@ -168,3 +168,12 @@ Los E2E con axe (`serious`/`critical`, claro y oscuro) y teclado encontraron sei
 - **`aria-valuemin`/`aria-valuemax` en `<input type="text">` (aria-allowed-attr, crítico).** Causa: atributos de rol `spinbutton`/`slider` en un cuadro de texto. Arreglo: se quitan; min/max se siguen aplicando al salir del campo. Archivo: `EntradaNumero.vue`.
 - **La carga inicial robaba el foco al `<h1>`.** Síntoma: el primer Tab no llegaba al enlace "Saltar al contenido" y Enter no enfocaba `main` (carreras con la transición de entrada). Causa: `afterEach` del router y `@after-enter` enfocaban el h1 también en la primera carga. Arreglo: no se mueve el foco en la navegación inicial (`origen === START_LOCATION`) ni en la primera entrada de vista. Archivos: `router/index.ts`, `LayoutPrincipal.vue`.
 - **Pendiente menor, no corregido:** la galería `/componentes` (solo DEV) muestra varios `<h1>` (demos de `EncabezadoPagina`); axe no lo marca como serio.
+
+## E-P5B — Defectos hallados en la verificación visual en navegador (P5-B)
+Chromium real a 375/768/1280, claro/oscuro y `prefers-reduced-motion`. Los E2E no los veían.
+- **Iconos invisibles (hamburguesa, tema, colapsar, ícono de nav).** Síntoma: botones de solo ícono vacíos. Causa: `primeicons` instalado pero su CSS nunca importado. Arreglo: `import "primeicons/primeicons.css"` en `main.ts`.
+- **Tap targets de 40 px** (menú, tema, colapsar barra, cerrar de Drawer/Dialog/Toast) y enlaces de nav de ~40 px. Arreglo: `!size-11` en los tres botones, `min-h-11` en enlaces de nav, regla CSS `min-width/height: 2.75rem` para `.p-drawer/.p-dialog/.p-toast-close-button` en `principal.css`.
+- **Toast desbordaba 12,5 px por lado a 375 px (ancho fijo 25rem) y tapaba la barra superior** (top-center). Arreglo: `max-width: calc(100vw - 1.5rem)` en `.p-toast` y posición móvil `bottom-center` en `Notificaciones.vue`.
+- **Botón de colapsar la barra lateral quedaba al fondo de la página** (aside con la altura del contenido). Arreglo: `md:sticky md:top-0 md:h-screen` en el `aside`.
+- **404 sin favicon (404 en consola) y enlace "Ir al tablero" de ~20 px.** Arreglo: `<link rel="icon" href="data:,">` en `index.html`; `py-3` en el enlace.
+- **No corregido (menor):** la tabla de la galería a 768 px recorta la columna "Actualizado" (scroll horizontal; ids de demo muy largos; con datos reales del catálogo cabe). El diálogo en móvil ocupa 100vw como hoja inferior, no la altura completa. Cabecera ordenable "Tipo" mide ~43,5 px de alto en tablet. Etiqueta "Close" del Drawer de PrimeVue en inglés (aria-label) por traducir.
