@@ -140,3 +140,17 @@ orden de reemplazo sea posterior a la anulada cobrada. Inicio del día local cal
 `-05:00` (Bogotá no tiene horario de verano) y el día con `calcularDiaOperativo`. Cortesía: sin
 `fecha_cobro` ni evento COBRADA. `esquemaResumenOrdenTablero` se define con `esquemaOrden.and(...)`
 porque `esquemaOrden` lleva `superRefine` y no admite `.extend`. Semilla PRNG fija `20261007`.
+
+### F1-1/P2-D — Registro de mocks por efecto de importación desde `src/api/*`
+`src/mocks/index.ts` registra los 5 manejadores al evaluarse; cada `src/api/*.ts` hace `import "../mocks"` (los módulos ES se evalúan una sola vez, así no hay doble registro). `cliente.ts` (de P1-D) no se tocó. El tablero filtra por `orden.dia_operativo` y, sin `dia`, usa `calcularDiaOperativo(ahora(), negocio)`; un `dia` mal formado devuelve `servidor`. Consecuencia: en modo http los mocks también entran al bundle (aceptable en F1; revisar en F2).
+**Estado:** resuelto.
+
+### F1-1/P2-A — Layout y router: detalles
+`src/router/index.ts` exporta `rutas` e `instalarGanchosNavegacion` (para tests con `createMemoryHistory`). El foco al `<h1>` se hace en `afterEach` (tras `nextTick`) y también en `@after-enter` de la `Transition` (con `mode="out-in"` el h1 nuevo aparece tras 250 ms); helper en `componentes/layout/foco.ts`. Las vistas llevan `<h1 tabindex="-1">`. `BarraSuperior` recibe además `menuAbierto` y emite `alternar-menu` (el plan solo decía `titulo`). La barra lateral lleva un botón propio para contraer/expandir; el estado inicial (tablet colapsada, desktop expandida) lo decide `LayoutPrincipal` con `matchMedia("(min-width: 1024px)")`. Se añade `declare module "vue-router"` con `meta.titulo`.
+
+## DM-P2B — Componentes de presentación: botón nativo y tarjeta interactiva
+**Fecha / tarea:** 2026-10-07 · F1-1/P2-B. `BotonBase` usa `<button>` nativo con Tailwind (no PrimeVue `Button`) para controlar `aria-busy`, ancho estable al cargar (etiqueta `invisible` + spinner absoluto) y bloqueo de `click`. Cargando usa `aria-disabled` (conserva foco); deshabilitado usa `disabled`. `TarjetaBase` interactiva toma `role="button"` + `tabindex=0` y emite `seleccionar` con clic/Enter/Espacio. Los tests llaman `afterEach(cleanup)` porque `setup.ts` no limpia solo (globals de vitest apagados).
+
+## DM-P2C — Entradas con `<input>` nativo; selectores con PrimeVue `Select`
+**Fecha / tarea:** 2026-10-07 · F1-1/P2-C
+`EntradaTexto/Numero/Correo/Contrasena/Dinero` usan `<input>` nativo con clases de tokens Tailwind, no `InputText` de PrimeVue: `InputText` guarda su propio `d_value` y pisa el valor formateado/saneado que `EntradaDinero` y `EntradaNumero` escriben en vivo (se vería el texto crudo). `SelectorBase` sí envuelve `Select` (etiqueta vía `aria-labelledby`, descripción/requerido por `pt.label`). Detalles: `EntradaDinero` rechaza (no recorta) lo que excede `max`, 0 emite `null` salvo `permiteCero`, y sube a `min` al salir; `EntradaNumero` aplica `min`/`max` al salir. Los selectores de dominio conservan visible el ítem inactivo ya elegido (marcado "(inactivo)"). `SelectorTrabajador` con `permiteSinAsignar` emite `null` para "Sin asignar" (`// P-G`). Descripción de rango ("0 a 200 cc") es solo presentación.

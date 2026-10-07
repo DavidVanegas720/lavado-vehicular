@@ -1,5 +1,7 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import LayoutPrincipal from "@/componentes/layout/LayoutPrincipal.vue";
+</script>
 
 <template>
-  <RouterView />
+  <LayoutPrincipal />
 </template>

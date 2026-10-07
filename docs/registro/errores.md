@@ -125,3 +125,17 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 **Causa:** error de calendario en el plan; `Intl` es correcto.
 **Solución:** el test espera "miércoles". Corregir el ejemplo del plan (no tocado por P1-B).
 **Estado:** resuelto.
+
+### E-P2C — Tests de componentes: sin limpieza automática ni `matchMedia` global
+**Fecha / tarea:** 2026-10-07 · F1-1/P2-C
+**Síntoma:** `getByLabelText` encontraba elementos de tests anteriores; `PrimeVue Select` lanzaba `matchMedia is not a function`; `InputText` exigía el plugin PrimeVue.
+**Causa:** vitest sin `globals` no registra el `cleanup` de testing-library, y el stub de `matchMedia` de `pruebas/setup.ts` está en `window` pero PrimeVue llama al global.
+**Solución:** cada test hace `afterEach(cleanup)` y los de `Select` usan `vi.stubGlobal("matchMedia", ...)`. Sugerencia para el orquestador: mover ambos a `src/pruebas/setup.ts`.
+**Estado:** resuelto (workaround local).
+
+## E-OLA2 — Cierre de la Ola 2 de F1-1 (orquestador)
+- **Formato:** 4 archivos de P2-A fallaban `prettier --check`; se corrigió con `prettier --write` antes del commit.
+- **Warnings abiertos (10):** `vue/require-default-prop` en props opcionales (`icono`, `ariaLabel`, `descripcion`). No son errores; en Vue 3.5 + TS una prop opcional ya es `undefined` por defecto. Decidir en la Ola 3 si se desactiva la regla en `eslint.config.js` o se añaden defaults.
+- **Setup de pruebas (P2-B y P2-C):** `src/pruebas/setup.ts` no hace `cleanup` entre tests ni expone `matchMedia` al global de PrimeVue `Select`. Cada agente lo parchó en sus tests; mover a `setup.ts` (archivo de FP-0) como limpieza pendiente.
+- **Mocks en bundle http (P2-D):** `import "../mocks"` en `src/api/*.ts` mete los mocks en el bundle aunque el modo sea http. Revisar en F2.
+- **Plan F1-1:** el ejemplo del plan dice que 2026-10-07 es martes; es miércoles (E-015).
