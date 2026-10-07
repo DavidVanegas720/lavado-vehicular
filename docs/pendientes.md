@@ -78,7 +78,59 @@ Estas son preguntas de dominio que solo se van a hacer visibles cuando alguien v
 
 ## Hallazgos
 
-*Vacío al inicio del proyecto. Los hallazgos se agregan durante el trabajo de las tareas.*
+### H-01 — La asunción de P-G contradice D-20 y el modelo
+**Qué es:** P-G asume "el % se congela al asignar"; D-20 dice "al crear". `porcentaje_comision_congelado` es `Int` no nulo, pero `trabajador_id` es nullable.
+**Qué se rompe si nadie lo atiende:** F1-3 no puede modelar una orden sin lavador sin violar el esquema o D-20.
+**Mitigación actual:** FP-0 copia el modelo tal cual; el seed de F1-1 asigna lavador a todas las órdenes.
+**Cuándo se descubrió:** 2026-10-07, planificación FP-0/F1-1 (arquitecto).
+**Estado:** abierto — David decide antes de F1-3.
+
+### H-02 — D-01 fija Node 20, que llegó a fin de soporte en abril de 2026
+**Qué es:** el equipo local corre Node 24 (LTS). FP-0 pone `engines.node: ">=24"`.
+**Qué se rompe si nadie lo atiende:** en F2, Render y CI podrían arrancar en una versión sin parches de seguridad.
+**Cuándo se descubrió:** 2026-10-07, planificación FP-0.
+**Estado:** abierto — David aprueba enmendar D-01 a Node 24.
+
+### H-03 — No hay regla de redondeo para la comisión
+**Qué es:** `precio × porcentaje / 10000` puede dar fracción de centavo (p. ej. 4500 sobre $25.001). Ningún doc dice si se redondea hacia arriba, hacia abajo o al más cercano.
+**Qué se rompe si nadie lo atiende:** la comisión estimada de F1-3 y los reportes de F1-5 pueden diferir del backend por centavos.
+**Cuándo se descubrió:** 2026-10-07, planificación F1-1.
+**Estado:** abierto — David decide antes de F1-3 (propuesta: al centavo más cercano, mitad hacia arriba).
+
+### H-04 — gitleaks, Dependabot, CI remoto y `pnpm audit` diferidos
+**Qué es:** David los sacó de FP-0. Solo existe `pnpm verificar` local.
+**Qué se rompe si nadie lo atiende:** se puede commitear un secreto o mergear con lint/tests rotos sin que nada lo frene.
+**Mitigación actual:** `.env` en `.gitignore`; F1 no usa secretos.
+**Cuándo se descubrió:** 2026-10-07, planificación FP-0.
+**Estado:** abierto — hacer antes del primer secreto real (FP-F2-1 a más tardar).
+
+### H-05 — `.plan/` "no se commitea a main" (arquitectura) vs agentes que lo necesitan
+**Qué es:** si `.plan/` no se versiona, los agentes en otro worktree o clon no ven el plan aprobado ni el revisor lo puede comparar con el diff.
+**Qué se rompe si nadie lo atiende:** planes perdidos o desincronizados entre chats.
+**Propuesta:** versionar `.plan/` (FP-0 no lo ignora).
+**Cuándo se descubrió:** 2026-10-07, planificación FP-0.
+**Estado:** abierto — David confirma.
+
+### H-06 — La asunción de P-C (`descuento_centavos`) no existe en el modelo
+**Qué es:** P-C asume un campo de descuento separado en la orden; `modelo-datos.md` no lo tiene. Los esquemas de FP-0 copian solo el modelo.
+**Qué se rompe si nadie lo atiende:** F1-3 agregaría un campo ad hoc sin fuente de verdad.
+**Propuesta:** F1-3 lo agrega a `esquemas/ordenes.ts` con `// P-C` y a modelo-datos como "provisional".
+**Cuándo se descubrió:** 2026-10-07, planificación FP-0.
+**Estado:** abierto — revisar al planificar F1-3.
+
+### H-07 — La configuración del negocio no tiene módulo en la arquitectura
+**Qué es:** los 9 módulos de `arquitectura.md` no incluyen leer/editar `Negocio` (horario, zona), y F1-1 necesita esos datos para el día operativo; F1-4 los edita.
+**Qué se rompe si nadie lo atiende:** la ruta `GET /api/negocio/actual` de F1-1 queda sin dueño en F2.
+**Mitigación actual:** F1-1 usa módulo `"negocio"` provisional en el cliente.
+**Cuándo se descubrió:** 2026-10-07, planificación F1-1.
+**Estado:** abierto — decidir antes de F1-4 (¿módulo nuevo o dentro de `usuarios`/`auth`?).
+
+### H-08 — No está definida la semana de los reportes
+**Qué es:** "reporte semanal" no dice si la semana es lunes–domingo u otra. `SelectorRangoFechas` (F1-1) tiene atajo "Esta semana".
+**Qué se rompe si nadie lo atiende:** los totales semanales no coinciden con cómo los cuenta Carlos.
+**Mitigación actual:** F1-1 asume lunes–domingo con comentario `// H-08`.
+**Cuándo se descubrió:** 2026-10-07, planificación F1-1.
+**Estado:** abierto — confirmar con Carlos antes de F1-5.
 
 ### Plantilla de hallazgo
 
