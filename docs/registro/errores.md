@@ -67,4 +67,54 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 **Fecha / tarea:** 2026-10-07 · planificación FP-0
 **Síntoma:** `git status` muestra `R arquitectura.md -> docs/arquitectura.md` etc. en staging.
 **Solución:** FP-0 paso 0 commitea en `main` antes de abrir la rama de tarea.
-**Estado:** abierto hasta ejecutar FP-0.
+**Estado:** resuelto (2026-10-07, commit `docs: mover documentos a docs/...` en `main`).
+
+### E-008 — `pnpm add` con `@lavado-vehicular/shared@workspace:*` falla en zsh
+**Fecha / tarea:** 2026-10-07 · FP-0/P3
+**Síntoma:** `(eval):18: no matches found: @lavado-vehicular/shared@workspace:*`; el resto de la línea no se instaló.
+**Causa:** zsh interpreta `*` como glob.
+**Solución:** entrecomillar: `pnpm add '@lavado-vehicular/shared@workspace:*'`.
+**Prevención:** entrecomillar specs con `*` en comandos de shell.
+**Estado:** resuelto.
+
+### E-009 — `esquemaDiaOperativo` lanzaba excepción con texto mal formado
+**Fecha / tarea:** 2026-10-07 · FP-0/P2.3
+**Síntoma:** test `safeParse("07/10/2026")` lanzaba `RangeError: Invalid time value` en vez de devolver `success: false`.
+**Causa:** Zod 4 ejecuta los `refine` aunque el `regex` previo falle; `toISOString()` sobre una fecha NaN lanza.
+**Solución:** el refine comprueba `!Number.isNaN(fecha.getTime())` antes de `toISOString()` (`dia-operativo.ts`).
+**Prevención:** test "acepta una fecha real y rechaza una inexistente o mal formada".
+**Estado:** resuelto.
+
+### E-010 — TypeScript 7 (latest) rompe `vue-tsc` y no lo soporta `typescript-eslint`
+**Fecha / tarea:** 2026-10-07 · FP-0/P3
+**Síntoma:** `pnpm typecheck` -> `ERR_PACKAGE_PATH_NOT_EXPORTED` en `vue-tsc/index.js` (`resolveTscPath`).
+`typescript-eslint@8.71` declara peer `typescript >=4.8.4 <6.1.0`.
+**Causa:** `latest` de `typescript` es 7.0.x (compilador nativo, sin `lib/tsc.js`); vue-tsc 3.3 usa esa ruta.
+**Solución:** fijar `typescript@~6.0.3` (raíz, `apps/web`, `packages/shared`). Registrado en DM-20.
+**Prevención:** subir a TS 7 solo cuando vue-tsc y typescript-eslint lo soporten.
+**Estado:** resuelto.
+
+### E-011 — `vitest.config.ts` importaba `./vite.config` sin extensión (aviso de Vite 8)
+**Fecha / tarea:** 2026-10-07 · FP-0/P3
+**Síntoma:** `(!) Your Vite config uses features that are unsupported by configLoader: 'native'... import "./vite.config" without a file extension`.
+**Solución:** `import ... from "./vite.config.ts"` + `allowImportingTsExtensions` en `tsconfig.node.json`.
+**Estado:** resuelto.
+
+### E-012 — `pnpm format` reescribió los .md de docs/ y .plan/
+**Fecha / tarea:** 2026-10-07 · FP-0/P4
+**Síntoma:** `git status` mostró ~15 documentos modificados tras `pnpm format`.
+**Causa:** Prettier formatea Markdown por defecto (tablas, énfasis).
+**Solución:** `git checkout -- docs .plan` y agregar `docs`, `.plan`, `CLAUDE.md`, `PROMPT-INICIAL.md` a `.prettierignore` (DM-19).
+**Estado:** resuelto.
+
+### E-013 — Artefactos `*.tsbuildinfo` de `vue-tsc -b` aparecían sin ignorar
+**Fecha / tarea:** 2026-10-07 · FP-0/P3
+**Solución:** `*.tsbuildinfo` agregado a `.gitignore`.
+**Estado:** resuelto.
+
+### E-014 — PrimeVue 5 es una librería con licencia y avisa "license is not configured"
+**Fecha / tarea:** 2026-10-07 · FP-0/P5
+**Síntoma:** `console.warn [PrimeUI] PrimeUI license is not configured.` al arrancar (solo warning; el fixture E2E falla solo ante `console.error`).
+**Causa:** `primevue@5` (última estable) usa `@primeui/license-manager`: licencia comunitaria gratuita (<US$1M ingresos, <5 devs, etc.) que exige clave y renovación anual; sin clave muestra aviso.
+**Solución:** ninguna todavía; queda como decisión de David (H-09). Alternativa: fijar `primevue@^4` (MIT).
+**Estado:** derivado a H-09.

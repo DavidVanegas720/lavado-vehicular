@@ -8,7 +8,7 @@ Estados: `pendiente` · `en curso` · `bloqueado (motivo)` · `hecho (fecha)`.
 
 | Tarea | Plan | Estado | Rama | Notas |
 |---|---|---|---|---|
-| FP-0 Bootstrap monorepo | `.plan/FP-0.md` | pendiente | `tarea/fp-0-bootstrap` | Autorizado por David (D-28) |
+| FP-0 Bootstrap monorepo | `.plan/FP-0.md` | hecho (2026-10-07; ver H-09) | `tarea/fp-0-bootstrap` | Autorizado por David (D-28) |
 | F1-1 Fundación y componentes | `.plan/F1-1.md` | pendiente | `tarea/f1-1-fundacion` | Requiere FP-0 |
 | F1-2 Autenticación mockeada | — | pendiente | — | Plan a redactar al cerrar F1-1 |
 | Deuda A | — | pendiente | — | Tras F1-2 (incluye E-001, E-002, E-003, E-006) |
@@ -19,14 +19,14 @@ Estados: `pendiente` · `en curso` · `bloqueado (motivo)` · `hecho (fecha)`.
 
 ## FP-0
 
-- [ ] P0 Commit de docs en `main` + rama
-- [ ] P1 Raíz (package.json, workspace, tsconfig base, .gitignore, .env.example)
-- [ ] P2 `packages/shared`: dinero, porcentaje, día operativo, esquemas Zod + tests
-- [ ] P3 `apps/web`: Vite + Vue + Pinia + Router + PrimeVue + Tailwind + entorno + Sentry consola
-- [ ] P4 ESLint + Prettier con reglas de convención (prueba de humo hecha)
-- [ ] P5 Playwright + E2E de arranque
-- [ ] P6 Verificación (`pnpm verificar`, `pnpm e2e`, navegador 3 anchuras)
-- [ ] P7 Registro + informe de cierre
+- [x] P0 Commit de docs en `main` + rama
+- [x] P1 Raíz (package.json, workspace, tsconfig base, .gitignore, .env.example)
+- [x] P2 `packages/shared`: dinero, porcentaje, día operativo, esquemas Zod + tests
+- [x] P3 `apps/web`: Vite + Vue + Pinia + Router + PrimeVue + Tailwind + entorno + Sentry consola
+- [x] P4 ESLint + Prettier con reglas de convención (prueba de humo hecha)
+- [x] P5 Playwright + E2E de arranque
+- [x] P6 Verificación (`pnpm verificar`, `pnpm e2e`, navegador 3 anchuras)
+- [x] P7 Registro + informe de cierre
 - Pendiente diferido: gitleaks, Dependabot, CI remoto, `pnpm audit` → H-04
 
 ## F1-1
