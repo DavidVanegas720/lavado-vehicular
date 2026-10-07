@@ -24,9 +24,11 @@ describe("App", () => {
   it("la raíz redirige al tablero y marca aria-current", async () => {
     const { router } = await montar("/");
     expect(router.currentRoute.value.path).toBe("/tablero");
-    expect(await screen.findByRole("heading", { level: 1, name: "Tablero" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Tablero del día" }),
+    ).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Principal" });
-    expect(nav.querySelector("[aria-current='page']")).toHaveTextContent("Tablero");
+    expect(nav.querySelector("[aria-current='page']")).toHaveAccessibleName("Tablero");
     expect(document.title).toBe("Tablero · Lavado Vehicular");
   });
 
@@ -35,7 +37,7 @@ describe("App", () => {
     await router.push("/catalogo");
     const nav = screen.getByRole("navigation", { name: "Principal" });
     await waitFor(() =>
-      expect(nav.querySelector("[aria-current='page']")).toHaveTextContent("Catálogo"),
+      expect(nav.querySelector("[aria-current='page']")).toHaveAccessibleName("Catálogo"),
     );
   });
 

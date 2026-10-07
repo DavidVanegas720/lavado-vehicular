@@ -5,7 +5,7 @@ import { afterEach, vi } from "vitest";
 afterEach(cleanup);
 
 // jsdom no trae matchMedia ni ResizeObserver y PrimeVue los usa.
-if (!("matchMedia" in window)) {
+if (typeof window.matchMedia !== "function") {
   const matchMediaFalso = (consulta: string) => ({
     matches: false,
     media: consulta,

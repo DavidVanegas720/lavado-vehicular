@@ -146,3 +146,15 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 - **Warnings abiertos (11):** `vue/require-default-prop` (ver E-OLA2).
 - **matchMedia en Notificaciones (P3-D):** el agente añadió un guard `window.matchMedia` en `Notificaciones.vue` porque en su test no existía pese al stub de `setup.ts`. Causa no investigada; revisar si el guard sigue haciendo falta.
 - **Fuera de alcance de los pasos:** TablaBase asume zona America/Bogota en `fecha-hora` (P-X); TarjetaOrden asume paquete = primer ítem por `created_at`; SelectorRangoFechas asume semana lunes–domingo (H-08).
+
+## E-P4A — `setup.ts` no stubeaba `matchMedia`
+- **Síntoma:** `window.matchMedia is not a function` al montar `TablaBase` en tests de vistas/App.
+- **Causa:** jsdom define `window.matchMedia` como propiedad con valor `undefined`, así que `!("matchMedia" in window)` era falso y el stub nunca se instalaba (explica el guard de P3-D en `Notificaciones`).
+- **Solución:** `src/pruebas/setup.ts` ahora usa `typeof window.matchMedia !== "function"`. Efecto: en tests la barra lateral arranca colapsada (matches=false); `App.test.ts` usa nombre accesible.
+- **Estado:** resuelto.
+
+## E-OLA4 — Cierre de la Ola 4 de F1-1 (orquestador)
+- **Causa raíz de E-OLA3 (matchMedia):** mi stub de `setup.ts` (commit 712103b) usaba `"matchMedia" in window`, que es verdadero en jsdom aunque valga `undefined`. P4-A lo corrigió con `typeof window.matchMedia !== "function"` (E-P4A). El guard `window.matchMedia` que P3-D metió en `Notificaciones.vue` ya no debería hacer falta: quitarlo en la limpieza de F1-1.
+- **Build:** aviso de chunk > 500 kB tras minificar (PrimeVue + galería). No bloquea. Revisar code-splitting de la ruta `/componentes` (solo DEV) antes de F2.
+- **Warnings abiertos (11):** `vue/require-default-prop` sin cambios.
+- **Vistas:** el día en Tablero/Reportes usa Bogotá 8–17 hasta que exista la config del negocio (H-07).
