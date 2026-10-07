@@ -118,3 +118,10 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 **Causa:** `primevue@5` (última estable) usa `@primeui/license-manager`: licencia comunitaria gratuita (<US$1M ingresos, <5 devs, etc.) que exige clave y renovación anual; sin clave muestra aviso.
 **Solución:** ninguna todavía; queda como decisión de David (H-09). Alternativa: fijar `primevue@^4` (MIT).
 **Estado:** derivado a H-09.
+
+### E-015 — El plan dice que 2026-10-07 es "martes"; es miércoles
+**Fecha / tarea:** 2026-10-07 · F1-1/P1-B
+**Síntoma:** `formatearDia("2026-10-07")` devuelve `"miércoles, 7 de octubre de 2026"`, no `"martes, ..."` como dice `.plan/F1-1.md`.
+**Causa:** error de calendario en el plan; `Intl` es correcto.
+**Solución:** el test espera "miércoles". Corregir el ejemplo del plan (no tocado por P1-B).
+**Estado:** resuelto.

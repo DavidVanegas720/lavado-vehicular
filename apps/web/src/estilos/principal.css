@@ -4,6 +4,7 @@
 
 @import "tailwindcss";
 @import "tailwindcss-primeui";
+@import "./tokens.css";
 
 /* Modo oscuro por clase (coincide con darkModeSelector de PrimeVue). */
 @custom-variant dark (&:where(.app-oscuro, .app-oscuro *));
@@ -18,4 +19,14 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Base: colores de los tokens y transición suave al cambiar de tema (150 ms, anulada arriba). */
+body {
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
 }

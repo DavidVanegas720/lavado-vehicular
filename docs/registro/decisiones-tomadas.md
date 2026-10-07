@@ -123,3 +123,20 @@ Instaladas el 2026-10-07 con Node v24.20.0 y pnpm 12.9.1:
 
 ## DM-23 — PrimeVue fijado en ^4 (MIT), no 5 (H-09)
 PrimeVue 5 exige clave de licencia y emite `console.warn` sin ella; choca con la capa gratuita (D-21) y con la fixture E2E que falla ante errores de consola. Se fija `primevue@^4.5.5` + `@primeuix/themes@^2.0.3`. Verificado: verificar, build y e2e pasan. Revisitar si PrimeVue 4 deja de recibir parches.
+
+## DM-P1A — Tokens con `@theme static` y override en `.app-oscuro`
+Los tokens viven en `src/estilos/tokens.css` como `@theme static` (emite en `:root` y genera utilidades Tailwind: `bg-fondo`, `text-estado-lavando`...). El modo oscuro redefine las mismas variables bajo `.app-oscuro`, sin duplicar utilidades. Primario del proyecto: azul (#1d4ed8 claro / #60a5fa oscuro). Preset en `src/tema/preset.ts` (`presetLavado` + `opcionesTema`); `main.ts` los consume. Colores contrastados a mano (AA), axe en P5-A.
+
+## DM-24 — P1-B: formateo de dinero sin división y hora en 24 h
+**Fecha / tarea:** 2026-10-07 · F1-1/P1-B. `formatear` pasa a `Intl.NumberFormat` un decimal exacto en texto (`"1234.56"`, armado con `slice` sobre los centavos) en vez de dividir (regla 1). `formatearHora` devuelve `HH:mm` 24 h en la zona del negocio (el plan no fijaba formato). `useDiaOperativo` es un `ref` de `ahora` con `setInterval` de 60 s limpiado en `onScopeDispose`.
+
+## DM-24 — Cliente HTTP (P1-D): modo `negocio` sigue a `catalogo`; PRNG determinista; registro estricto
+**Fecha / tarea:** 2026-10-07 · F1-1/P1-D
+`entorno.ts` no tiene `VITE_API_MODO_NEGOCIO` (H-07), así que `modoDe("negocio")` usa el modo de `catalogo`. `ModuloApi` cubre los 7 módulos con variable de entorno + `negocio` (`salud` y `respaldo` no los consume el frontend). Latencia y errores simulados usan un PRNG mulberry32 con semilla fija (reproducible); los errores alternan `sin-respuesta`/`servidor`. `registrarManejador` lanza si la clave ya existe; `configurarClienteParaPruebas` acepta además `modo` para forzar `mock`/`http` en tests.
+
+### F1-1/P1-C — Orden del seed y detalles de mocks
+`crearSeed` genera las 20 órdenes en orden cronológico (anuladas primero, CREADA al final) para que la
+orden de reemplazo sea posterior a la anulada cobrada. Inicio del día local calculado con offset fijo
+`-05:00` (Bogotá no tiene horario de verano) y el día con `calcularDiaOperativo`. Cortesía: sin
+`fecha_cobro` ni evento COBRADA. `esquemaResumenOrdenTablero` se define con `esquemaOrden.and(...)`
+porque `esquemaOrden` lleva `superRefine` y no admite `.extend`. Semilla PRNG fija `20261007`.
