@@ -120,3 +120,6 @@ Instaladas el 2026-10-07 con Node v24.20.0 y pnpm 12.9.1:
 | eslint | 10.12 (typescript-eslint 8.71, eslint-plugin-vue 10) |
 | prettier | 3.9 |
 | @sentry/vue | 11.4 |
+
+## DM-23 — PrimeVue fijado en ^4 (MIT), no 5 (H-09)
+PrimeVue 5 exige clave de licencia y emite `console.warn` sin ella; choca con la capa gratuita (D-21) y con la fixture E2E que falla ante errores de consola. Se fija `primevue@^4.5.5` + `@primeuix/themes@^2.0.3`. Verificado: verificar, build y e2e pasan. Revisitar si PrimeVue 4 deja de recibir parches.
