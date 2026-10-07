@@ -139,3 +139,10 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 - **Setup de pruebas (P2-B y P2-C):** `src/pruebas/setup.ts` no hace `cleanup` entre tests ni expone `matchMedia` al global de PrimeVue `Select`. Cada agente lo parchó en sus tests; mover a `setup.ts` (archivo de FP-0) como limpieza pendiente.
 - **Mocks en bundle http (P2-D):** `import "../mocks"` en `src/api/*.ts` mete los mocks en el bundle aunque el modo sea http. Revisar en F2.
 - **Plan F1-1:** el ejemplo del plan dice que 2026-10-07 es martes; es miércoles (E-015).
+
+## E-OLA3 — Cierre de la Ola 3 de F1-1 (orquestador)
+- **Typecheck en tests (P3-B, P3-E):** `SelectorRangoFechas.test.ts` pasaba strings donde se espera el tipo marcado `DiaOperativo`; `TablaBase.test.ts` fallaba porque el componente es genérico (`T`) y `render` no puede inferirlo (`claveFila` quedaba como `never`). Solución: helper `dia()` con cast en el test de fechas (import desde `@lavado-vehicular/shared/dominio/dia-operativo`, el paquete no tiene export raíz) y cast del componente genérico a `Component` en el test de la tabla. Código de producción sin cambios.
+- **Lint:** al quitar los `?.` innecesarios, `textContent` es `string` en jsdom/DOM types; el `[0]` sí puede ser `undefined` (noUncheckedIndexedAccess).
+- **Warnings abiertos (11):** `vue/require-default-prop` (ver E-OLA2).
+- **matchMedia en Notificaciones (P3-D):** el agente añadió un guard `window.matchMedia` en `Notificaciones.vue` porque en su test no existía pese al stub de `setup.ts`. Causa no investigada; revisar si el guard sigue haciendo falta.
+- **Fuera de alcance de los pasos:** TablaBase asume zona America/Bogota en `fecha-hora` (P-X); TarjetaOrden asume paquete = primer ítem por `created_at`; SelectorRangoFechas asume semana lunes–domingo (H-08).
