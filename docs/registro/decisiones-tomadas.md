@@ -123,3 +123,63 @@ Instaladas el 2026-10-07 con Node v24.20.0 y pnpm 12.9.1:
 
 ## DM-23 — PrimeVue fijado en ^4 (MIT), no 5 (H-09)
 PrimeVue 5 exige clave de licencia y emite `console.warn` sin ella; choca con la capa gratuita (D-21) y con la fixture E2E que falla ante errores de consola. Se fija `primevue@^4.5.5` + `@primeuix/themes@^2.0.3`. Verificado: verificar, build y e2e pasan. Revisitar si PrimeVue 4 deja de recibir parches.
+
+## DM-P1A — Tokens con `@theme static` y override en `.app-oscuro`
+Los tokens viven en `src/estilos/tokens.css` como `@theme static` (emite en `:root` y genera utilidades Tailwind: `bg-fondo`, `text-estado-lavando`...). El modo oscuro redefine las mismas variables bajo `.app-oscuro`, sin duplicar utilidades. Primario del proyecto: azul (#1d4ed8 claro / #60a5fa oscuro). Preset en `src/tema/preset.ts` (`presetLavado` + `opcionesTema`); `main.ts` los consume. Colores contrastados a mano (AA), axe en P5-A.
+
+## DM-24 — P1-B: formateo de dinero sin división y hora en 24 h
+**Fecha / tarea:** 2026-10-07 · F1-1/P1-B. `formatear` pasa a `Intl.NumberFormat` un decimal exacto en texto (`"1234.56"`, armado con `slice` sobre los centavos) en vez de dividir (regla 1). `formatearHora` devuelve `HH:mm` 24 h en la zona del negocio (el plan no fijaba formato). `useDiaOperativo` es un `ref` de `ahora` con `setInterval` de 60 s limpiado en `onScopeDispose`.
+
+## DM-24 — Cliente HTTP (P1-D): modo `negocio` sigue a `catalogo`; PRNG determinista; registro estricto
+**Fecha / tarea:** 2026-10-07 · F1-1/P1-D
+`entorno.ts` no tiene `VITE_API_MODO_NEGOCIO` (H-07), así que `modoDe("negocio")` usa el modo de `catalogo`. `ModuloApi` cubre los 7 módulos con variable de entorno + `negocio` (`salud` y `respaldo` no los consume el frontend). Latencia y errores simulados usan un PRNG mulberry32 con semilla fija (reproducible); los errores alternan `sin-respuesta`/`servidor`. `registrarManejador` lanza si la clave ya existe; `configurarClienteParaPruebas` acepta además `modo` para forzar `mock`/`http` en tests.
+
+### F1-1/P1-C — Orden del seed y detalles de mocks
+`crearSeed` genera las 20 órdenes en orden cronológico (anuladas primero, CREADA al final) para que la
+orden de reemplazo sea posterior a la anulada cobrada. Inicio del día local calculado con offset fijo
+`-05:00` (Bogotá no tiene horario de verano) y el día con `calcularDiaOperativo`. Cortesía: sin
+`fecha_cobro` ni evento COBRADA. `esquemaResumenOrdenTablero` se define con `esquemaOrden.and(...)`
+porque `esquemaOrden` lleva `superRefine` y no admite `.extend`. Semilla PRNG fija `20261007`.
+
+### F1-1/P2-D — Registro de mocks por efecto de importación desde `src/api/*`
+`src/mocks/index.ts` registra los 5 manejadores al evaluarse; cada `src/api/*.ts` hace `import "../mocks"` (los módulos ES se evalúan una sola vez, así no hay doble registro). `cliente.ts` (de P1-D) no se tocó. El tablero filtra por `orden.dia_operativo` y, sin `dia`, usa `calcularDiaOperativo(ahora(), negocio)`; un `dia` mal formado devuelve `servidor`. Consecuencia: en modo http los mocks también entran al bundle (aceptable en F1; revisar en F2).
+**Estado:** resuelto.
+
+### F1-1/P2-A — Layout y router: detalles
+`src/router/index.ts` exporta `rutas` e `instalarGanchosNavegacion` (para tests con `createMemoryHistory`). El foco al `<h1>` se hace en `afterEach` (tras `nextTick`) y también en `@after-enter` de la `Transition` (con `mode="out-in"` el h1 nuevo aparece tras 250 ms); helper en `componentes/layout/foco.ts`. Las vistas llevan `<h1 tabindex="-1">`. `BarraSuperior` recibe además `menuAbierto` y emite `alternar-menu` (el plan solo decía `titulo`). La barra lateral lleva un botón propio para contraer/expandir; el estado inicial (tablet colapsada, desktop expandida) lo decide `LayoutPrincipal` con `matchMedia("(min-width: 1024px)")`. Se añade `declare module "vue-router"` con `meta.titulo`.
+
+## DM-P2B — Componentes de presentación: botón nativo y tarjeta interactiva
+**Fecha / tarea:** 2026-10-07 · F1-1/P2-B. `BotonBase` usa `<button>` nativo con Tailwind (no PrimeVue `Button`) para controlar `aria-busy`, ancho estable al cargar (etiqueta `invisible` + spinner absoluto) y bloqueo de `click`. Cargando usa `aria-disabled` (conserva foco); deshabilitado usa `disabled`. `TarjetaBase` interactiva toma `role="button"` + `tabindex=0` y emite `seleccionar` con clic/Enter/Espacio. Los tests llaman `afterEach(cleanup)` porque `setup.ts` no limpia solo (globals de vitest apagados).
+
+## DM-P2C — Entradas con `<input>` nativo; selectores con PrimeVue `Select`
+**Fecha / tarea:** 2026-10-07 · F1-1/P2-C
+`EntradaTexto/Numero/Correo/Contrasena/Dinero` usan `<input>` nativo con clases de tokens Tailwind, no `InputText` de PrimeVue: `InputText` guarda su propio `d_value` y pisa el valor formateado/saneado que `EntradaDinero` y `EntradaNumero` escriben en vivo (se vería el texto crudo). `SelectorBase` sí envuelve `Select` (etiqueta vía `aria-labelledby`, descripción/requerido por `pt.label`). Detalles: `EntradaDinero` rechaza (no recorta) lo que excede `max`, 0 emite `null` salvo `permiteCero`, y sube a `min` al salir; `EntradaNumero` aplica `min`/`max` al salir. Los selectores de dominio conservan visible el ítem inactivo ya elegido (marcado "(inactivo)"). `SelectorTrabajador` con `permiteSinAsignar` emite `null` para "Sin asignar" (`// P-G`). Descripción de rango ("0 a 200 cc") es solo presentación.
+
+## DM-P3E — SelectorRangoFechas con `<input type="date">` nativos
+**Fecha / tarea:** 2026-10-07 · F1-1/P3-E
+Dos `<input type="date">` (Desde/Hasta) dentro de un grupo etiquetado por `CampoBase`, más atajos Hoy / Esta semana / Este mes / Mes anterior. Solo emite cuando ambos extremos están completos (si no, `null`); si `desde > hasta` mueve el otro extremo en vez de rechazar; los valores superiores a `maximo` se recortan a `maximo`. Sin prop de configuración: el día actual usa `calcularDiaOperativo` con Bogotá 8–17 asumido (`// P-X`) hasta que exista configuración de negocio; "Esta semana" va de lunes a `min(domingo, maximo)` (`// H-08`). Aritmética de fechas en UTC sobre texto AAAA-MM-DD; ningún `Date` sale del componente.
+
+## DM-P3C — `TarjetaOrden`: `<article>` propio, paquete = primer ítem, zona por prop
+**Fecha / tarea:** 2026-10-07 · F1-1/P3-C
+`TarjetaOrden` es un `<article tabindex=0>` propio (no `TarjetaBase`, cuyo rol `button` contradice el plan: debe ser `article` con nombre "Orden {placa}"); emite `seleccionar(id)` con clic/Enter, sin botones. `// P-TO1`: la hora local usa prop opcional `zonaHoraria` (por defecto `America/Bogota`, igual que el seed) porque el plan no pasa la config del negocio. `// P-TO2`: el "paquete" es el primer ítem por `created_at` y el resto cuenta como "+N adicionales" (el DTO no distingue paquete de adicional).
+
+## DM-P3A — `useForm` recibe el esquema Zod; `FormularioBase` recibe el formulario por prop
+**Fecha / tarea:** 2026-10-07 · F1-1/P3-A
+`useForm(esquema, iniciales)` devuelve `{ valores, errores, id, alSalir, validar, reiniciar }`. `FormularioBase` toma además la prop `formulario` (el retorno de `useForm`, no listada en la tabla del plan) para validar al enviar sin duplicar estado. Los campos del slot enlazan `valores`, `errores` y `alSalir` (blur) y usan `formulario.id(campo)`. Foco al primer campo inválido: busca el primer `[aria-invalid="true"]` del `<form>` tras `nextTick`. Un error ya visible se corrige en vivo al escribir. Con `enviando` se ignora el envío.
+
+### F1-1/P3-D — Diálogos y notificaciones sobre PrimeVue
+`DialogoModal` envuelve `Dialog` (header = `titulo`, trampa de foco y Esc de PrimeVue); devuelve el foco al disparador con un `watch` sobre `visible`, y añade slot `pie`. `DialogoConfirmacion` siempre pone el foco inicial en Cancelar (atributo `autofocus`, no solo en peligroso) y bloquea el cierre mientras `cargando`. `Notificaciones` elige `top-center`/`top-right` con `matchMedia("(min-width: 768px)")` (tolera su ausencia); `useNotificacion` usa 3 s éxito, 6 s error, 4 s info/aviso, todas cerrables. El nombre `Notificaciones` incumple `vue/multi-word-component-names` (fijado por el plan): se desactiva la regla en ese archivo.
+
+## DM-P3B — `TablaBase`: tabla nativa, vista móvil por `matchMedia`, selección por escuchador
+**Fecha / tarea:** 2026-10-07 · F1-1/P3-B. Tabla nativa con Tailwind (no `DataTable` de PrimeVue) para controlar `aria-sort`, tarjetas móviles y tap targets. `< 768 px` se decide con `matchMedia("(min-width: 768px)")` (se renderiza una sola vista, no dos). Props añadidas al plan: `etiqueta` (nombre accesible) y `error` es booleano. Las filas solo son enfocables/seleccionables si el padre escucha `seleccionar-fila` (se detecta vía `vnode.props`). Formato `fecha-hora` asume zona `America/Bogota` (`// P-X`) porque la tabla no recibe la config del negocio. Orden alterna asc, desc, sin orden.
+
+## DM-P4B — Galería: filas de precios con ids, selector de rango tipado localmente
+**Fecha / tarea:** 2026-10-07 · F1-1/P4-B
+`VistaGaleria` carga servicio/rango/precio/trabajador/tablero por `@/api/*` (sin literales de dinero; `EntradaDinero` parte de `null` y muestra el valor en centavos). La tabla de precios muestra ids de servicio/rango (sin cruzar nombres) para no inventar lógica. El tipo del `v-model` de `SelectorRangoFechas` se declara localmente (`{ desde: DiaOperativo; hasta: DiaOperativo }`): ESLint tipado no resuelve `RangoFechas` exportado desde un `.vue` (error `no-redundant-type-constituents`, también presente en `VistaReportes`, archivo de P4-A).
+
+## DM-P4A — Vistas conectadas: día operativo con respaldo, catálogo plano, App.test ajustado
+**Fecha / tarea:** 2026-10-07 · F1-1/P4-A. `VistaTablero` carga órdenes y negocio en paralelo; el día del encabezado sale de `useDiaOperativo` con la config del negocio y, mientras no llega (o si falla), Bogotá 8–17 (`// P-X`). Estado `null` = cargando; los cuatro estados no-ok de `Resultado` se mapean con `switch` exhaustivo a un mensaje y `EstadoVacio tono="error"` + Reintentar. `VistaCatalogo` aplana servicios + precios en una `TablaBase` con una columna por rango activo (orden `orden_visualizacion`); precio ausente muestra "—". `Notificaciones` se monta en `App.vue`. `App.test.ts` (no listado como propio) se ajustó: el h1 ahora es "Tablero del día" y el ítem activo se comprueba por nombre accesible (la barra puede estar colapsada). `VistaReportes` tipa el rango localmente (el tipo exportado del SFC no lo resuelve ESLint).
+
+## DM-P5A — E2E de F1-1: reloj fijo en el fixture, foco no se mueve en la carga inicial
+**Fecha / tarea:** 2026-10-07 · F1-1/P5-A
+Cinco proyectos Playwright (movil 375×667 táctil, tablet 768×1024, escritorio 1280×800, movimiento reducido, oscuro) con `locale es-CO` y `timezoneId America/Bogota`. El fixture `test` (auto) fija `page.clock.setFixedTime(2026-10-07T15:00-05:00)` y falla ante `console.error`/`pageerror`. `fp-0-arranque.spec.ts` (no listado como propio) se actualizó: `/` redirige a `/tablero` y el h1 es "Tablero del día". Axe: se filtran `serious`/`critical`; se espera `networkidle` + 500 ms para que termine la transición. Decisión de comportamiento: la carga inicial no enfoca el h1 (solo las navegaciones posteriores), para que el skip link sea el primer Tab; el plan decía "foco en el h1" tras navegar, no al cargar. En `/componentes` el drawer y el `aria-current` de la barra de escritorio solo se comprueban donde existen (móvil usa el drawer).

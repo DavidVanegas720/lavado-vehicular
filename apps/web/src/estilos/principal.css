@@ -4,6 +4,7 @@
 
 @import "tailwindcss";
 @import "tailwindcss-primeui";
+@import "./tokens.css";
 
 /* Modo oscuro por clase (coincide con darkModeSelector de PrimeVue). */
 @custom-variant dark (&:where(.app-oscuro, .app-oscuro *));
@@ -18,4 +19,27 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Base: colores de los tokens y transición suave al cambiar de tema (150 ms, anulada arriba). */
+body {
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+/* Tap targets >= 44px en los botones de cerrar de PrimeVue (por defecto miden 40px). */
+.p-drawer-close-button,
+.p-dialog-close-button,
+.p-toast-close-button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+/* El toast (25rem por defecto) no debe desbordar viewports de 375 px. */
+.p-toast {
+  max-width: calc(100vw - 1.5rem);
 }

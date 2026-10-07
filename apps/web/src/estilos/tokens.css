@@ -1,0 +1,89 @@
+/* Tokens de diseño. `@theme static` los emite en :root y genera utilidades de Tailwind
+   (bg-fondo, text-texto-suave, bg-estado-lavando-fondo, rounded-tarjeta, shadow-elevada...).
+   En modo oscuro se redefinen bajo `.app-oscuro`; las utilidades usan var(), así que cambian solas.
+   Contraste AA verificado a mano (texto >= 4.5:1, íconos/grandes >= 3:1); axe lo confirma en P5-A. */
+@theme static {
+  --color-fondo: #f8fafc;
+  --color-superficie: #ffffff;
+  --color-superficie-elevada: #ffffff;
+  --color-borde: #cbd5e1;
+  --color-texto: #0f172a;
+  --color-texto-suave: #475569;
+  --color-primario: #1d4ed8;
+  --color-primario-contraste: #ffffff;
+  --color-exito: #15803d;
+  --color-aviso: #b45309;
+  --color-peligro: #b91c1c;
+  --color-info: #0369a1;
+
+  --color-estado-creada: #334155;
+  --color-estado-creada-fondo: #e2e8f0;
+  --color-estado-lavando: #1d4ed8;
+  --color-estado-lavando-fondo: #dbeafe;
+  --color-estado-lista: #166534;
+  --color-estado-lista-fondo: #dcfce7;
+  --color-estado-cobrada: #6d28d9;
+  --color-estado-cobrada-fondo: #ede9fe;
+  --color-estado-entregada: #115e59;
+  --color-estado-entregada-fondo: #ccfbf1;
+  --color-estado-anulada: #991b1b;
+  --color-estado-anulada-fondo: #fee2e2;
+
+  --radius-control: 0.5rem;
+  --radius-tarjeta: 0.75rem;
+  --radius-modal: 1rem;
+
+  --shadow-suave: 0 1px 2px 0 rgb(15 23 42 / 0.08);
+  --shadow-elevada: 0 4px 12px -2px rgb(15 23 42 / 0.12), 0 2px 4px -2px rgb(15 23 42 / 0.08);
+  --shadow-modal: 0 20px 40px -8px rgb(15 23 42 / 0.25);
+
+  /* Pila del sistema: sin descargas de fuentes (capa gratuita, sin dependencias externas). */
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-pequeno: 0.8125rem;
+  --text-pequeno--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-grande: 1.125rem;
+  --text-grande--line-height: 1.75rem;
+  --text-titulo: 1.5rem;
+  --text-titulo--line-height: 2rem;
+  --text-titulo-grande: 2rem;
+  --text-titulo-grande--line-height: 2.5rem;
+}
+
+.app-oscuro {
+  color-scheme: dark;
+
+  --color-fondo: #0b1220;
+  --color-superficie: #111a2c;
+  --color-superficie-elevada: #1a2540;
+  --color-borde: #334155;
+  --color-texto: #e2e8f0;
+  --color-texto-suave: #a3b1c6;
+  --color-primario: #60a5fa;
+  --color-primario-contraste: #0b1220;
+  --color-exito: #4ade80;
+  --color-aviso: #fbbf24;
+  --color-peligro: #f87171;
+  --color-info: #38bdf8;
+
+  --color-estado-creada: #cbd5e1;
+  --color-estado-creada-fondo: #1e293b;
+  --color-estado-lavando: #93c5fd;
+  --color-estado-lavando-fondo: #172554;
+  --color-estado-lista: #86efac;
+  --color-estado-lista-fondo: #052e16;
+  --color-estado-cobrada: #c4b5fd;
+  --color-estado-cobrada-fondo: #2e1065;
+  --color-estado-entregada: #5eead4;
+  --color-estado-entregada-fondo: #042f2e;
+  --color-estado-anulada: #fca5a5;
+  --color-estado-anulada-fondo: #450a0a;
+
+  --shadow-suave: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-elevada: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-modal: 0 20px 40px -8px rgb(0 0 0 / 0.65);
+}

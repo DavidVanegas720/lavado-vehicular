@@ -1,5 +1,9 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import Notificaciones from "@/componentes/base/Notificaciones.vue";
+import LayoutPrincipal from "@/componentes/layout/LayoutPrincipal.vue";
+</script>
 
 <template>
-  <RouterView />
+  <LayoutPrincipal />
+  <Notificaciones />
 </template>

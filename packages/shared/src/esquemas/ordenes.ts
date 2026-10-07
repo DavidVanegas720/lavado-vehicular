@@ -108,3 +108,19 @@ export const esquemaEventoOrden = z.object({
 });
 
 export type EventoOrden = z.infer<typeof esquemaEventoOrden>;
+
+/**
+ * DTO del tablero: la orden con los datos que la tarjeta necesita sin más consultas.
+ * `total_centavos` es la suma de los precios congelados de los ítems.
+ */
+export const esquemaResumenOrdenTablero = esquemaOrden.and(
+  z.object({
+    placa: esquemaTextoNoVacio,
+    cilindraje: z.number().int().min(0).nullable(),
+    trabajador_nombre: z.string().nullable(),
+    items: z.array(esquemaItemOrden),
+    total_centavos: esquemaCentavos,
+  }),
+);
+
+export type ResumenOrdenTablero = z.infer<typeof esquemaResumenOrdenTablero>;

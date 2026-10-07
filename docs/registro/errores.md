@@ -118,3 +118,62 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 **Causa:** `primevue@5` (última estable) usa `@primeui/license-manager`: licencia comunitaria gratuita (<US$1M ingresos, <5 devs, etc.) que exige clave y renovación anual; sin clave muestra aviso.
 **Solución:** ninguna todavía; queda como decisión de David (H-09). Alternativa: fijar `primevue@^4` (MIT).
 **Estado:** derivado a H-09.
+
+### E-015 — El plan dice que 2026-10-07 es "martes"; es miércoles
+**Fecha / tarea:** 2026-10-07 · F1-1/P1-B
+**Síntoma:** `formatearDia("2026-10-07")` devuelve `"miércoles, 7 de octubre de 2026"`, no `"martes, ..."` como dice `.plan/F1-1.md`.
+**Causa:** error de calendario en el plan; `Intl` es correcto.
+**Solución:** el test espera "miércoles". Corregir el ejemplo del plan (no tocado por P1-B).
+**Estado:** resuelto.
+
+### E-P2C — Tests de componentes: sin limpieza automática ni `matchMedia` global
+**Fecha / tarea:** 2026-10-07 · F1-1/P2-C
+**Síntoma:** `getByLabelText` encontraba elementos de tests anteriores; `PrimeVue Select` lanzaba `matchMedia is not a function`; `InputText` exigía el plugin PrimeVue.
+**Causa:** vitest sin `globals` no registra el `cleanup` de testing-library, y el stub de `matchMedia` de `pruebas/setup.ts` está en `window` pero PrimeVue llama al global.
+**Solución:** cada test hace `afterEach(cleanup)` y los de `Select` usan `vi.stubGlobal("matchMedia", ...)`. Sugerencia para el orquestador: mover ambos a `src/pruebas/setup.ts`.
+**Estado:** resuelto (workaround local).
+
+## E-OLA2 — Cierre de la Ola 2 de F1-1 (orquestador)
+- **Formato:** 4 archivos de P2-A fallaban `prettier --check`; se corrigió con `prettier --write` antes del commit.
+- **Warnings abiertos (10):** `vue/require-default-prop` en props opcionales (`icono`, `ariaLabel`, `descripcion`). No son errores; en Vue 3.5 + TS una prop opcional ya es `undefined` por defecto. Decidir en la Ola 3 si se desactiva la regla en `eslint.config.js` o se añaden defaults.
+- **Setup de pruebas (P2-B y P2-C):** `src/pruebas/setup.ts` no hace `cleanup` entre tests ni expone `matchMedia` al global de PrimeVue `Select`. Cada agente lo parchó en sus tests; mover a `setup.ts` (archivo de FP-0) como limpieza pendiente.
+- **Mocks en bundle http (P2-D):** `import "../mocks"` en `src/api/*.ts` mete los mocks en el bundle aunque el modo sea http. Revisar en F2.
+- **Plan F1-1:** el ejemplo del plan dice que 2026-10-07 es martes; es miércoles (E-015).
+
+## E-OLA3 — Cierre de la Ola 3 de F1-1 (orquestador)
+- **Typecheck en tests (P3-B, P3-E):** `SelectorRangoFechas.test.ts` pasaba strings donde se espera el tipo marcado `DiaOperativo`; `TablaBase.test.ts` fallaba porque el componente es genérico (`T`) y `render` no puede inferirlo (`claveFila` quedaba como `never`). Solución: helper `dia()` con cast en el test de fechas (import desde `@lavado-vehicular/shared/dominio/dia-operativo`, el paquete no tiene export raíz) y cast del componente genérico a `Component` en el test de la tabla. Código de producción sin cambios.
+- **Lint:** al quitar los `?.` innecesarios, `textContent` es `string` en jsdom/DOM types; el `[0]` sí puede ser `undefined` (noUncheckedIndexedAccess).
+- **Warnings abiertos (11):** `vue/require-default-prop` (ver E-OLA2).
+- **matchMedia en Notificaciones (P3-D):** el agente añadió un guard `window.matchMedia` en `Notificaciones.vue` porque en su test no existía pese al stub de `setup.ts`. Causa no investigada; revisar si el guard sigue haciendo falta.
+- **Fuera de alcance de los pasos:** TablaBase asume zona America/Bogota en `fecha-hora` (P-X); TarjetaOrden asume paquete = primer ítem por `created_at`; SelectorRangoFechas asume semana lunes–domingo (H-08).
+
+## E-P4A — `setup.ts` no stubeaba `matchMedia`
+- **Síntoma:** `window.matchMedia is not a function` al montar `TablaBase` en tests de vistas/App.
+- **Causa:** jsdom define `window.matchMedia` como propiedad con valor `undefined`, así que `!("matchMedia" in window)` era falso y el stub nunca se instalaba (explica el guard de P3-D en `Notificaciones`).
+- **Solución:** `src/pruebas/setup.ts` ahora usa `typeof window.matchMedia !== "function"`. Efecto: en tests la barra lateral arranca colapsada (matches=false); `App.test.ts` usa nombre accesible.
+- **Estado:** resuelto.
+
+## E-OLA4 — Cierre de la Ola 4 de F1-1 (orquestador)
+- **Causa raíz de E-OLA3 (matchMedia):** mi stub de `setup.ts` (commit 712103b) usaba `"matchMedia" in window`, que es verdadero en jsdom aunque valga `undefined`. P4-A lo corrigió con `typeof window.matchMedia !== "function"` (E-P4A). El guard `window.matchMedia` que P3-D metió en `Notificaciones.vue` ya no debería hacer falta: quitarlo en la limpieza de F1-1.
+- **Build:** aviso de chunk > 500 kB tras minificar (PrimeVue + galería). No bloquea. Revisar code-splitting de la ruta `/componentes` (solo DEV) antes de F2.
+- **Warnings abiertos (11):** `vue/require-default-prop` sin cambios.
+- **Vistas:** el día en Tablero/Reportes usa Bogotá 8–17 hasta que exista la config del negocio (H-07).
+
+## E-P5A — Defectos de accesibilidad destapados por los E2E de F1-1 (P5-A)
+Los E2E con axe (`serious`/`critical`, claro y oscuro) y teclado encontraron seis defectos reales en producción; se corrigieron sin silenciar reglas.
+- **Contraste de la tarjeta ANULADA (color-contrast, ambos temas).** Causa: `opacity-60` sobre toda la tarjeta bajaba el texto de AA. Arreglo: se quita la opacidad y la tarjeta se distingue con `border-dashed` (el badge ya dice ANULADA y el texto va tachado). Archivos: `TarjetaOrden.vue`, `TarjetaOrden.test.ts`.
+- **Contraste del enlace activo de la barra lateral (claro).** Causa: `bg-primary`/`text-primary-contrast` (primario 500 de PrimeVue, blanco sobre #3b82f6 = 3,7:1). Arreglo: tokens del proyecto `bg-primario`/`text-primario-contraste`. Archivo: `BarraLateral.vue` (ambos enlaces).
+- **Contraste del botón peligro (oscuro).** Causa: `text-white` sobre `--color-peligro` claro (#f87171). Arreglo: `text-primario-contraste` (blanco en claro, #0b1220 en oscuro). Archivo: `BotonBase.vue`.
+- **Botón cargando sin nombre accesible (button-name, crítico).** Causa: la etiqueta iba en un `<span class="invisible">` (`visibility:hidden` la saca del árbol de accesibilidad). Arreglo: `opacity-0` en su lugar (mantiene el ancho y el nombre). Archivo: `BotonBase.vue`.
+- **`aria-valuemin`/`aria-valuemax` en `<input type="text">` (aria-allowed-attr, crítico).** Causa: atributos de rol `spinbutton`/`slider` en un cuadro de texto. Arreglo: se quitan; min/max se siguen aplicando al salir del campo. Archivo: `EntradaNumero.vue`.
+- **La carga inicial robaba el foco al `<h1>`.** Síntoma: el primer Tab no llegaba al enlace "Saltar al contenido" y Enter no enfocaba `main` (carreras con la transición de entrada). Causa: `afterEach` del router y `@after-enter` enfocaban el h1 también en la primera carga. Arreglo: no se mueve el foco en la navegación inicial (`origen === START_LOCATION`) ni en la primera entrada de vista. Archivos: `router/index.ts`, `LayoutPrincipal.vue`.
+- **Pendiente menor, no corregido:** la galería `/componentes` (solo DEV) muestra varios `<h1>` (demos de `EncabezadoPagina`); axe no lo marca como serio.
+
+## E-P5B — Defectos hallados en la verificación visual en navegador (P5-B)
+Chromium real a 375/768/1280, claro/oscuro y `prefers-reduced-motion`. Los E2E no los veían.
+- **Iconos invisibles (hamburguesa, tema, colapsar, ícono de nav).** Síntoma: botones de solo ícono vacíos. Causa: `primeicons` instalado pero su CSS nunca importado. Arreglo: `import "primeicons/primeicons.css"` en `main.ts`.
+- **Tap targets de 40 px** (menú, tema, colapsar barra, cerrar de Drawer/Dialog/Toast) y enlaces de nav de ~40 px. Arreglo: `!size-11` en los tres botones, `min-h-11` en enlaces de nav, regla CSS `min-width/height: 2.75rem` para `.p-drawer/.p-dialog/.p-toast-close-button` en `principal.css`.
+- **Toast desbordaba 12,5 px por lado a 375 px (ancho fijo 25rem) y tapaba la barra superior** (top-center). Arreglo: `max-width: calc(100vw - 1.5rem)` en `.p-toast` y posición móvil `bottom-center` en `Notificaciones.vue`.
+- **Botón de colapsar la barra lateral quedaba al fondo de la página** (aside con la altura del contenido). Arreglo: `md:sticky md:top-0 md:h-screen` en el `aside`.
+- **404 sin favicon (404 en consola) y enlace "Ir al tablero" de ~20 px.** Arreglo: `<link rel="icon" href="data:,">` en `index.html`; `py-3` en el enlace.
+- **No corregido (menor):** la tabla de la galería a 768 px recorta la columna "Actualizado" (scroll horizontal; ids de demo muy largos; con datos reales del catálogo cabe). El diálogo en móvil ocupa 100vw como hoja inferior, no la altura completa. Cabecera ordenable "Tipo" mide ~43,5 px de alto en tablet. Etiqueta "Close" del Drawer de PrimeVue en inglés (aria-label) por traducir.
