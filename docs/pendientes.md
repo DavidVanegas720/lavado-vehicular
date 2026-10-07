@@ -137,7 +137,7 @@ Estas son preguntas de dominio que solo se van a hacer visibles cuando alguien v
 **Qué se rompe si nadie lo atiende:** aviso de licencia en consola/UI y posible incumplimiento al pasar a plan pago; choca con la restricción de capa gratuita.
 **Opciones:** obtener la clave Community, o fijar `primevue@^4` (MIT, sin clave). Ver E-014.
 **Cuándo se descubrió:** 2026-10-07, FP-0 paso 5.
-**Estado:** abierto — David decide antes de F1-1.
+**Estado:** cerrado — se fijó primevue@^4 (DM-23).
 
 ### Plantilla de hallazgo
 
