@@ -73,11 +73,11 @@ describe("TarjetaOrden", () => {
     expect(screen.getByText("Cortesía")).toBeInTheDocument();
   });
 
-  it("anulada se atenúa", () => {
+  it("anulada se distingue con borde discontinuo", () => {
     render(TarjetaOrden, {
       props: { orden: crear({ estado: "ANULADA", motivo_anulacion: "Error" }) },
     });
-    expect(screen.getByRole("article")).toHaveClass("opacity-60");
+    expect(screen.getByRole("article")).toHaveClass("border-dashed");
     expect(screen.getByText("Anulada")).toBeInTheDocument();
   });
 

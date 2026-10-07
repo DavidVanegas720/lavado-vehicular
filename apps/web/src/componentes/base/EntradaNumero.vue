@@ -78,8 +78,6 @@ function alSalir(evento: Event): void {
           :aria-invalid="campo.invalido ? 'true' : undefined"
           :aria-describedby="campo.describedby"
           :aria-required="requerido ? 'true' : undefined"
-          :aria-valuemin="min"
-          :aria-valuemax="max"
           :class="[
             'min-h-11 w-full rounded-control border border-borde bg-superficie px-3 py-2 text-texto placeholder:text-texto-suave focus-visible:ring-2 focus-visible:ring-primario focus-visible:outline-none aria-[invalid=true]:border-peligro disabled:opacity-50',
             sufijo ? 'pr-12' : '',

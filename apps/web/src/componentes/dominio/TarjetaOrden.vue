@@ -49,7 +49,7 @@ function seleccionar(): void {
       'cursor-pointer transition duration-150 ease-out hover:shadow-elevada motion-reduce:transition-none',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primario',
       compacta ? 'gap-1 p-3' : 'gap-2 p-4',
-      anulada ? 'opacity-60' : '',
+      anulada ? 'border-dashed' : '',
     ]"
     @click="seleccionar"
     @keydown.enter.prevent="seleccionar"

@@ -1,6 +1,6 @@
 import { nextTick } from "vue";
 import { enfocarEncabezado } from "@/componentes/layout/foco";
-import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
+import { createRouter, createWebHistory, START_LOCATION, type RouteRecordRaw } from "vue-router";
 
 declare module "vue-router" {
   interface RouteMeta {
@@ -51,9 +51,11 @@ export const rutas: RouteRecordRaw[] = [
 
 /** Aplica título de documento y foco tras cada navegación. Reutilizable en tests. */
 export function instalarGanchosNavegacion(enrutador: ReturnType<typeof createRouter>): void {
-  enrutador.afterEach((destino) => {
+  enrutador.afterEach((destino, origen) => {
     const titulo = destino.meta.titulo;
     document.title = titulo ? `${titulo} · ${SUFIJO_TITULO}` : SUFIJO_TITULO;
+    // En la carga inicial no se mueve el foco: el primer Tab debe llegar al enlace "Saltar al contenido".
+    if (origen === START_LOCATION) return;
     // Si la vista ya está montada (sin transición) se enfoca ya; si no, lo hace la transición.
     void nextTick(enfocarEncabezado);
   });

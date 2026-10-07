@@ -25,7 +25,7 @@ const clasesVariante: Record<VarianteBoton, string> = {
   principal: "bg-primario text-primario-contraste hover:brightness-110 focus-visible:ring-primario",
   secundario:
     "bg-superficie text-texto border border-borde hover:bg-fondo focus-visible:ring-primario",
-  peligro: "bg-peligro text-white hover:brightness-110 focus-visible:ring-peligro",
+  peligro: "bg-peligro text-primario-contraste hover:brightness-110 focus-visible:ring-peligro",
 };
 
 const etiquetaAccesible = computed(() =>
@@ -57,7 +57,7 @@ function alClic(evento: MouseEvent): void {
     ]"
     @click="alClic"
   >
-    <span :class="['inline-flex items-center gap-2', cargando ? 'invisible' : '']">
+    <span :class="['inline-flex items-center gap-2', cargando ? 'opacity-0' : '']">
       <i v-if="icono" :class="['pi', icono]" aria-hidden="true" />
       <span v-if="!soloIcono">{{ etiqueta }}</span>
     </span>

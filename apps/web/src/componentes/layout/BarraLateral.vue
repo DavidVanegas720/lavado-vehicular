@@ -36,7 +36,7 @@ watch(
         :to="item.ruta"
         :title="colapsada ? item.etiqueta : undefined"
         :aria-label="colapsada ? item.etiqueta : undefined"
-        class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primary aria-[current=page]:text-primary-contrast"
+        class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primario aria-[current=page]:text-primario-contraste"
         :class="colapsada ? 'justify-center' : ''"
       >
         <i :class="item.icono" aria-hidden="true" />
@@ -68,7 +68,7 @@ watch(
         v-for="item in items"
         :key="item.ruta"
         :to="item.ruta"
-        class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primary aria-[current=page]:text-primary-contrast"
+        class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-100 dark:hover:bg-surface-800 aria-[current=page]:bg-primario aria-[current=page]:text-primario-contraste"
       >
         <i :class="item.icono" aria-hidden="true" />
         <span>{{ item.etiqueta }}</span>

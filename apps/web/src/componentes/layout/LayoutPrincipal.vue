@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { RouterView, useRoute } from "vue-router";
+import { RouterView, START_LOCATION, useRoute, useRouter } from "vue-router";
 import { enfocarEncabezado } from "./foco";
 import BarraLateral, { type ItemNavegacion } from "./BarraLateral.vue";
 import BarraSuperior from "./BarraSuperior.vue";
@@ -21,9 +21,20 @@ function esDesktop(): boolean {
 }
 
 const route = useRoute();
+const router = useRouter();
 // Tablet (768-1023 px) arranca colapsada; desktop expandida.
 const colapsada = ref(!esDesktop());
 const abiertaMovil = ref(false);
+
+// En la carga inicial no se roba el foco (el skip link debe ser el primer Tab): solo se enfoca el h1
+// una vez que ha habido una navegación posterior a la inicial.
+let hayNavegacion = false;
+router.afterEach((_destino, origen) => {
+  if (origen !== START_LOCATION) hayNavegacion = true;
+});
+function alEntrarVista(): void {
+  if (hayNavegacion) enfocarEncabezado();
+}
 </script>
 
 <template>
@@ -42,7 +53,7 @@ const abiertaMovil = ref(false);
       />
       <main id="contenido" tabindex="-1" class="flex-1 p-4 outline-none md:p-6">
         <RouterView v-slot="{ Component }">
-          <Transition name="pagina" mode="out-in" @after-enter="enfocarEncabezado">
+          <Transition name="pagina" mode="out-in" @after-enter="alEntrarVista">
             <component :is="Component" />
           </Transition>
         </RouterView>

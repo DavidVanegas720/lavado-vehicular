@@ -158,3 +158,13 @@ kebab-case (`use-tema.ts`). Registrado como DM-07.
 - **Build:** aviso de chunk > 500 kB tras minificar (PrimeVue + galería). No bloquea. Revisar code-splitting de la ruta `/componentes` (solo DEV) antes de F2.
 - **Warnings abiertos (11):** `vue/require-default-prop` sin cambios.
 - **Vistas:** el día en Tablero/Reportes usa Bogotá 8–17 hasta que exista la config del negocio (H-07).
+
+## E-P5A — Defectos de accesibilidad destapados por los E2E de F1-1 (P5-A)
+Los E2E con axe (`serious`/`critical`, claro y oscuro) y teclado encontraron seis defectos reales en producción; se corrigieron sin silenciar reglas.
+- **Contraste de la tarjeta ANULADA (color-contrast, ambos temas).** Causa: `opacity-60` sobre toda la tarjeta bajaba el texto de AA. Arreglo: se quita la opacidad y la tarjeta se distingue con `border-dashed` (el badge ya dice ANULADA y el texto va tachado). Archivos: `TarjetaOrden.vue`, `TarjetaOrden.test.ts`.
+- **Contraste del enlace activo de la barra lateral (claro).** Causa: `bg-primary`/`text-primary-contrast` (primario 500 de PrimeVue, blanco sobre #3b82f6 = 3,7:1). Arreglo: tokens del proyecto `bg-primario`/`text-primario-contraste`. Archivo: `BarraLateral.vue` (ambos enlaces).
+- **Contraste del botón peligro (oscuro).** Causa: `text-white` sobre `--color-peligro` claro (#f87171). Arreglo: `text-primario-contraste` (blanco en claro, #0b1220 en oscuro). Archivo: `BotonBase.vue`.
+- **Botón cargando sin nombre accesible (button-name, crítico).** Causa: la etiqueta iba en un `<span class="invisible">` (`visibility:hidden` la saca del árbol de accesibilidad). Arreglo: `opacity-0` en su lugar (mantiene el ancho y el nombre). Archivo: `BotonBase.vue`.
+- **`aria-valuemin`/`aria-valuemax` en `<input type="text">` (aria-allowed-attr, crítico).** Causa: atributos de rol `spinbutton`/`slider` en un cuadro de texto. Arreglo: se quitan; min/max se siguen aplicando al salir del campo. Archivo: `EntradaNumero.vue`.
+- **La carga inicial robaba el foco al `<h1>`.** Síntoma: el primer Tab no llegaba al enlace "Saltar al contenido" y Enter no enfocaba `main` (carreras con la transición de entrada). Causa: `afterEach` del router y `@after-enter` enfocaban el h1 también en la primera carga. Arreglo: no se mueve el foco en la navegación inicial (`origen === START_LOCATION`) ni en la primera entrada de vista. Archivos: `router/index.ts`, `LayoutPrincipal.vue`.
+- **Pendiente menor, no corregido:** la galería `/componentes` (solo DEV) muestra varios `<h1>` (demos de `EncabezadoPagina`); axe no lo marca como serio.
