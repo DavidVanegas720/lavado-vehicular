@@ -9,7 +9,9 @@ export const esquemaId = z
   .min(1, { error: "El id no puede estar vacío" });
 
 /** Fecha-hora ISO 8601 en UTC (por ejemplo `2026-10-07T15:00:00.000Z`). */
-export const esquemaFechaHora = z.iso.datetime({ error: "Debe ser una fecha-hora ISO 8601 en UTC" });
+export const esquemaFechaHora = z.iso.datetime({
+  error: "Debe ser una fecha-hora ISO 8601 en UTC",
+});
 
 /** Texto obligatorio no vacío (nombres, motivos). */
 export const esquemaTextoNoVacio = z

@@ -55,7 +55,8 @@ export function calcularDiaOperativo(
   config: ConfigDiaOperativo,
 ): ResultadoDiaOperativo {
   validarConfig(config);
-  if (Number.isNaN(instante.getTime())) throw new Error("El instante recibido no es una fecha válida.");
+  if (Number.isNaN(instante.getTime()))
+    throw new Error("El instante recibido no es una fecha válida.");
 
   const partes = new Intl.DateTimeFormat("en-CA", {
     timeZone: config.zona_horaria,

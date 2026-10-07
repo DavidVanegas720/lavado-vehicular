@@ -15,7 +15,10 @@ export const esquemaCierreCaja = z
     created_at: esquemaFechaHora,
   })
   .superRefine((cierre, contexto) => {
-    if (cierre.diferencia_centavos !== cierre.total_reportado_centavos - cierre.total_esperado_centavos) {
+    if (
+      cierre.diferencia_centavos !==
+      cierre.total_reportado_centavos - cierre.total_esperado_centavos
+    ) {
       contexto.addIssue({
         code: "custom",
         path: ["diferencia_centavos"],

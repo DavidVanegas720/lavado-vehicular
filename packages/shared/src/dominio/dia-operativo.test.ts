@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { calcularDiaOperativo, esquemaDiaOperativo, type ConfigDiaOperativo } from "./dia-operativo";
+import {
+  calcularDiaOperativo,
+  esquemaDiaOperativo,
+  type ConfigDiaOperativo,
+} from "./dia-operativo";
 
 const bogota: ConfigDiaOperativo = {
   zona_horaria: "America/Bogota",
@@ -36,8 +40,12 @@ describe("calcular día operativo", () => {
   });
 
   it("la hora exacta de apertura está dentro de horario y la de cierre fuera", () => {
-    expect(calcularDiaOperativo(new Date("2026-10-07T13:00:00Z"), bogota).fueraDeHorario).toBe(false);
-    expect(calcularDiaOperativo(new Date("2026-10-07T22:00:00Z"), bogota).fueraDeHorario).toBe(true);
+    expect(calcularDiaOperativo(new Date("2026-10-07T13:00:00Z"), bogota).fueraDeHorario).toBe(
+      false,
+    );
+    expect(calcularDiaOperativo(new Date("2026-10-07T22:00:00Z"), bogota).fueraDeHorario).toBe(
+      true,
+    );
   });
 
   it("lanza con zona horaria inválida", () => {
