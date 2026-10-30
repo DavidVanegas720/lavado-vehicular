@@ -1,13 +1,6 @@
-node_modules/
-dist/
-coverage/
-.vite/
-*.log
-.DS_Store
+node_modules
+dist
 .env
 .env.*
 !.env.example
-apps/web/playwright-report/
-apps/web/test-results/
-apps/web/blob-report/
-*.tsbuildinfo
+.playwright-mcp/
