@@ -1,20 +1,10 @@
-import { computed, ref } from 'vue';
-import { defineStore } from 'pinia';
-import * as sessionService from '../services/session.js';
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import * as session from '../services/session.js'
 
 export const useSessionStore = defineStore('session', () => {
-  const user = ref(null);
-  const active = computed(() => user.value !== null);
-  const role = computed(() => user.value?.role ?? null);
-
-  async function signIn(userId) {
-    user.value = await sessionService.signIn(userId);
-  }
-
-  async function signOut() {
-    await sessionService.signOut();
-    user.value = null;
-  }
-
-  return { user, active, role, signIn, signOut };
-});
+  const user = ref(session.getSession())
+  const signIn = (userId) => { user.value = session.signIn(userId) }
+  const signOut = () => { session.signOut(); user.value = null }
+  return { user, signIn, signOut }
+})

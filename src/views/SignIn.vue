@@ -1,44 +1,34 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { listDemoUsers } from '../services/session.js';
-import { ROLE_LABELS } from '../domain/roles.js';
-import { useSessionStore } from '../stores/session.js';
+import { useRouter } from 'vue-router'
+import { listDemoUsers } from '../services/session.js'
+import { useSessionStore } from '../stores/session.js'
+import { homeOf } from '../router/nav.js'
 
-const router = useRouter();
-const session = useSessionStore();
-const demoUsers = listDemoUsers();
-const error = ref('');
+const store = useSessionStore()
+const router = useRouter()
+const users = listDemoUsers()
+const ROLE_LABEL = { operator: 'Operador', admin: 'Administrador', superadmin: 'Superadmin' }
 
-async function enter(userId) {
-  error.value = '';
-  try {
-    await session.signIn(userId);
-    await router.push('/');
-  } catch {
-    error.value = 'No se pudo ingresar. Intentá de nuevo.';
-  }
+function enter(id) {
+  store.signIn(id)
+  router.push(homeOf(store.user.role))
 }
 </script>
 
 <template>
-  <main class="grid min-h-dvh place-items-center p-4">
-    <section class="w-full max-w-sm space-y-4">
-      <h1 class="text-2xl font-semibold">Ingresar</h1>
-      <p class="text-sm text-slate-600">Modo demostración: elegí un usuario.</p>
-      <p v-if="error" role="alert" class="text-sm text-red-700">{{ error }}</p>
-      <ul class="space-y-2">
-        <li v-for="user in demoUsers" :key="user.id">
-          <button
-            type="button"
-            class="w-full rounded-lg border border-slate-300 px-4 py-3 text-left hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            @click="enter(user.id)"
-          >
-            <span class="block font-medium">{{ user.name }}</span>
-            <span class="block text-sm text-slate-600">{{ ROLE_LABELS[user.role] }}</span>
-          </button>
-        </li>
-      </ul>
-    </section>
+  <main class="mx-auto max-w-md p-4">
+    <h1 class="mb-4 text-2xl font-bold">Lavadero</h1>
+    <p class="mb-4">Entrá como:</p>
+    <ul class="space-y-2">
+      <li v-for="u in users" :key="u.uid">
+        <button
+          type="button"
+          class="min-h-11 w-full rounded border border-slate-400 px-4 py-2 text-left hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+          @click="enter(u.uid)"
+        >
+          {{ u.name }} — {{ ROLE_LABEL[u.role] }}<span v-if="u.businessName">, {{ u.businessName }}</span>
+        </button>
+      </li>
+    </ul>
   </main>
 </template>

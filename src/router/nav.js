@@ -1,21 +1,18 @@
-import {
-  Building2,
-  Calculator,
-  ClipboardList,
-  History,
-  PlusCircle,
-  Store,
-  Users,
-} from '@lucide/vue';
-import { ROLES } from '../domain/roles.js';
+export const NAV = {
+  operator: [
+    { label: 'Nueva lavada', path: '/new-wash' },
+    { label: 'Mis órdenes del turno', path: '/my-orders' },
+    { label: 'Cierre de turno', path: '/shift-close' },
+  ],
+  admin: [
+    { label: 'Turnos', path: '/shifts' },
+    { label: 'Catálogo', path: '/catalog' },
+    { label: 'Lavadores', path: '/washers' },
+    { label: 'Operadores', path: '/operators' },
+    { label: 'Pagos a lavadores', path: '/washer-pay' },
+    { label: 'Historial de placas', path: '/plate-history' },
+  ],
+  superadmin: [{ label: 'Negocios', path: '/businesses' }],
+}
 
-// Paths are relative to the app shell. The router builds its children from this list.
-export const NAV = [
-  { path: '/businesses', label: 'Negocios', icon: Building2, roles: [ROLES.SUPERADMIN] },
-  { path: '/cash-close', label: 'Cierre del día', icon: Calculator, roles: [ROLES.ADMIN] },
-  { path: '/catalog', label: 'Catálogo', icon: Store, roles: [ROLES.ADMIN] },
-  { path: '/washers', label: 'Lavadores', icon: Users, roles: [ROLES.ADMIN] },
-  { path: '/plate-history', label: 'Historial por placa', icon: History, roles: [ROLES.ADMIN] },
-  { path: '/new-wash', label: 'Nueva lavada', icon: PlusCircle, roles: [ROLES.OPERATOR] },
-  { path: '/my-orders', label: 'Mis órdenes de hoy', icon: ClipboardList, roles: [ROLES.OPERATOR] },
-];
+export const homeOf = (role) => NAV[role][0].path

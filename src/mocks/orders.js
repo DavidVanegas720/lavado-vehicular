@@ -1,85 +1,55 @@
-import { ROLES } from '../domain/roles.js';
-import { normalizePlate, validatePlate } from '../domain/plate.js';
-import { calculateCommission } from '../domain/commission.js';
-import { PAYMENT_METHODS } from '../domain/payment.js';
-import { businessDay } from '../domain/businessDay.js';
-import { coded } from './errors.js';
-import { requireSession } from './session.js';
-import { businessCatalog } from './catalog.js';
+import { authorize, now } from './session.js'
+import { coded } from './errors.js'
+import { activeSnapshot } from './catalog.js'
+import { stateOf } from './shifts.js'
+import { shiftOf } from '../domain/shift.js'
+import { buildOrder, finishFields, cancelFields } from '../domain/order.js'
 
-const STAFF = [ROLES.ADMIN, ROLES.OPERATOR];
-const orders = [];
+const OPERATOR = ['operator']
+const ACTORS = ['admin', 'operator']
 
-// The order copies every value it needs. Later catalog or commission changes never touch it.
-export async function createOrder(input) {
-  const session = requireSession(STAFF);
-  const catalog = businessCatalog(session.business.id);
-
-  const plate = normalizePlate(input.plate);
-  if (!validatePlate(plate, 'motorcycle')) throw coded('validation', 'invalid plate');
-  if (!Number.isInteger(input.cc) || input.cc < 1) throw coded('validation', 'invalid cc');
-  if (!Object.hasOwn(PAYMENT_METHODS, input.paymentMethod)) throw coded('validation', 'invalid payment method');
-
-  if (!input.categoryId || !input.washTypeId || !input.washerId) throw coded('validation', 'missing selection');
-
-  const category = catalog.categories.find((item) => item.id === input.categoryId);
-  if (!category) throw coded('not_found', 'category');
-  if (input.cc < category.ccMin || input.cc > category.ccMax) throw coded('category_mismatch');
-
-  const washType = catalog.washTypes.find((item) => item.id === input.washTypeId);
-  const price = catalog.prices.find(
-    (item) => item.categoryId === category.id && item.washTypeId === input.washTypeId,
-  );
-  const washer = catalog.washers.find((item) => item.id === input.washerId);
-  if (!washType || !price || !washer) throw coded('not_found', 'wash type, price or washer');
-
-  const isCourtesy = input.isCourtesy === true;
-  const courtesyReason = String(input.courtesyReason ?? '').trim();
-  if (isCourtesy && !courtesyReason) throw coded('courtesy_reason_required');
-
-  const listPrice = price.amount;
-  const now = new Date();
-  const order = {
-    id: crypto.randomUUID(),
-    businessId: session.business.id,
-    plate,
-    vehicleType: 'motorcycle',
-    cc: input.cc,
-    categoryId: category.id,
-    categoryName: category.name,
-    ccMin: category.ccMin,
-    ccMax: category.ccMax,
-    washTypeId: washType.id,
-    washTypeName: washType.name,
-    listPrice,
-    finalPrice: isCourtesy ? 0 : listPrice,
-    isCourtesy,
-    courtesyReason: isCourtesy ? courtesyReason : '',
-    washerId: washer.id,
-    washerName: washer.name,
-    commissionBp: washer.commissionBp,
-    // Commission is always on the list price, even for courtesies.
-    commissionAmount: calculateCommission(listPrice, washer.commissionBp),
-    paymentMethod: input.paymentMethod,
-    status: 'completed',
-    createdBy: session.id,
-    createdAt: now,
-    businessDate: businessDay(now),
-  };
-  orders.push(order);
-  return structuredClone(order);
+export function createOrder(input) {
+  const { user, business, db } = authorize(OPERATOR)
+  if (!business.enabledVehicleTypes.includes(input?.vehicleType ?? 'motorcycle')) throw coded('forbidden')
+  const order = buildOrder(input ?? {}, activeSnapshot(db.catalogs[business.id]), user, now(), business.shifts)
+  if (stateOf(db, business.id, order.shiftKey) !== 'open') throw coded('shift_not_open')
+  const saved = { ...order, id: `o${db.nextId++}`, businessId: business.id }
+  db.orders.push(saved)
+  const v = ((db.vehicles[business.id] ??= {})[saved.plate] ??= {
+    plate: saved.plate, vehicleType: saved.vehicleType, plateSpecial: saved.plateSpecial, totalWashes: 0, firstWashAt: saved.createdAt,
+  })
+  Object.assign(v, { lastCc: saved.cc, lastWashAt: saved.createdAt, totalWashes: v.totalWashes + 1 })
+  return structuredClone(saved)
 }
 
-// Operators see their own orders for today; admins see the whole business for today.
-export async function listTodayOrders() {
-  const session = requireSession(STAFF);
-  const today = businessDay(new Date());
-  return structuredClone(
-    orders.filter(
-      (order) =>
-        order.businessId === session.business.id &&
-        order.businessDate === today &&
-        (session.role === ROLES.ADMIN || order.createdBy === session.id),
-    ),
-  );
+/** Shared by finish and cancel: tenant lookup, then closed-shift check, then the domain transition. */
+function transition(orderId, input, fieldsFn) {
+  const { user, business, db } = authorize(ACTORS)
+  const order = db.orders.find((o) => o.id === orderId && o.businessId === business.id)
+  if (!order) throw coded('not_found')
+  if (stateOf(db, business.id, order.shiftKey) === 'closed') throw coded('shift_closed')
+  Object.assign(order, fieldsFn(order, input, user, now()))
+  return structuredClone(order)
+}
+
+export const finishOrder = (orderId, input) => transition(orderId, input, finishFields)
+export const cancelOrder = (orderId, input) => transition(orderId, input, (o, i, u, n) => {
+  const f = cancelFields(o, i, u, n)
+  if (!f.isRefund) return f
+  const { db, business } = authorize(ACTORS)
+  const cur = shiftOf(n, business.shifts)
+  // the cash leaves the till of the instance that is current now, which must be open
+  if (o.paymentMethod === 'cash' && stateOf(db, business.id, cur.shiftKey) !== 'open') throw coded('shift_not_open')
+  return { ...f, refundShiftKey: cur.shiftKey, refundBusinessDate: cur.businessDate }
+})
+
+export function listShiftOrders() {
+  const { user, business, db } = authorize(OPERATOR)
+  const key = shiftOf(now(), business.shifts).shiftKey
+  const mine = db.orders.filter((o) => o.businessId === business.id && o.createdBy === user.uid)
+  const visible = mine.filter(
+    (o) => o.shiftKey === key || (o.status === 'in_progress' && stateOf(db, business.id, o.shiftKey) !== 'closed'),
+  )
+  // reverse first so equal timestamps keep newest-created first
+  return structuredClone(visible.reverse().sort((a, b) => b.createdAt - a.createdAt))
 }

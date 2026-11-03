@@ -1,8 +1,6 @@
-// The only catalog module that views and stores may import.
 export {
-  listCategories,
-  listPrices,
-  listWashTypes,
-  listWashers,
-  setWasherCommission,
-} from '../mocks/catalog.js';
+  listCategories, listWashTypes, listWashers, listPrices,
+  createCategory, updateCategory, setCategoryActive,
+  createWashType, updateWashType, setWashTypeActive, setPrice,
+  createWasher, updateWasher, setWasherActive, setWasherCommissionBp,
+} from '../mocks/catalog.js'

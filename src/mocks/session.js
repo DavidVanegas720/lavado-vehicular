@@ -1,27 +1,59 @@
-import { businesses, users } from './seed.js';
-import { coded } from './errors.js';
+import { createSeed } from './seed.js'
+import { coded } from './errors.js'
 
-let current = null;
+let db = createSeed()
+let uid = null
+let fixedNow = null
 
-// shortcut: demo sign-in by user id, no password; replaced by Firebase Auth in B1
-export function listDemoUsers() {
-  return structuredClone(users);
+/** Mock clock: tests set it, the app uses the wall clock. */
+export const now = () => (fixedNow ? new Date(fixedNow) : new Date())
+export const setMockNow = (date) => { fixedNow = date }
+export function resetMock(edit) {
+  db = createSeed()
+  edit?.(db) // tests only: tweak the fresh seed (e.g. two shifts)
+  uid = null
+  fixedNow = null
 }
 
-export async function signIn(userId) {
-  const user = users.find((candidate) => candidate.id === userId);
-  if (!user) throw coded('not_found', 'user not found');
-  current = { ...user, business: businesses.find((b) => b.id === user.businessId) ?? null };
-  return structuredClone(current);
+const publicUser = (u) => ({
+  uid: u.id,
+  role: u.role,
+  name: u.name,
+  businessId: u.businessId,
+  enabledVehicleTypes: [...(db.businesses.find((b) => b.id === u.businessId)?.enabledVehicleTypes ?? [])],
+  businessBlocked: db.businesses.find((b) => b.id === u.businessId)?.status === 'blocked',
+  businessName: db.businesses.find((b) => b.id === u.businessId)?.name ?? null,
+})
+
+/** Active users for the demo sign-in screen. */
+export const listDemoUsers = () => db.users.filter((u) => u.active).map(publicUser)
+
+/** Demo sign-in by seed user id, no password (Firebase Auth arrives in P8). */
+export function signIn(userId) {
+  const user = db.users.find((u) => u.id === userId)
+  if (!user) throw coded('not_found')
+  if (!user.active) throw coded('forbidden')
+  uid = user.id
+  return publicUser(user)
 }
 
-export async function signOut() {
-  current = null;
+export const signOut = () => { uid = null }
+
+export function getSession() {
+  const user = db.users.find((u) => u.id === uid)
+  return user ? publicUser(user) : null
 }
 
-// Every mock service calls this first. Views never get to decide who may act.
-export function requireSession(allowedRoles) {
-  if (!current || !allowedRoles.includes(current.role)) throw coded('forbidden');
-  if (current.business?.status === 'blocked') throw coded('business_blocked');
-  return current;
+/**
+ * Decision 13 gate for every other mock function: signed in, active, business not blocked, role.
+ * Tenant data comes only from the signed-in user's business.
+ */
+export function authorize(roles) {
+  const user = db.users.find((u) => u.id === uid)
+  if (!user) throw coded('unauthenticated')
+  if (!user.active) throw coded('forbidden')
+  const business = db.businesses.find((b) => b.id === user.businessId) ?? null
+  if (business?.status === 'blocked') throw coded('business_blocked')
+  if (!roles.includes(user.role)) throw coded('forbidden')
+  return { user: { uid: user.id, role: user.role }, business, db }
 }

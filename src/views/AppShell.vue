@@ -1,56 +1,45 @@
 <script setup>
-import { computed } from 'vue';
-import { RouterLink, RouterView, useRouter } from 'vue-router';
-import { NAV } from '../router/nav.js';
-import { ROLE_LABELS } from '../domain/roles.js';
-import { useSessionStore } from '../stores/session.js';
+import { useRouter } from 'vue-router'
+import { useSessionStore } from '../stores/session.js'
+import { NAV } from '../router/nav.js'
 
-const router = useRouter();
-const session = useSessionStore();
-const items = computed(() => NAV.filter((item) => item.roles.includes(session.role)));
-const heading = computed(() => session.user?.business?.name ?? 'Plataforma');
+const store = useSessionStore()
+const router = useRouter()
 
-async function leave() {
-  await session.signOut();
-  await router.push('/sign-in');
+function leave() {
+  router.push('/sign-in')
+  store.signOut()
 }
 </script>
 
 <template>
-  <div class="min-h-dvh">
-    <header class="border-b border-slate-200 px-4 py-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p class="font-semibold">{{ heading }}</p>
-          <p class="text-sm text-slate-600">{{ session.user?.name }} · {{ ROLE_LABELS[session.role] }}</p>
-        </div>
+  <a
+    href="#main"
+    class="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:bg-white focus:p-2 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+  >Saltar al contenido</a>
+  <header class="border-b border-slate-300 p-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <p class="font-bold">{{ store.user?.businessName ?? 'Lavadero' }}</p>
+      <p class="flex items-center gap-3">
+        <span>{{ store.user?.name }}</span>
         <button
           type="button"
-          class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          class="min-h-11 rounded border border-slate-400 px-4 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
           @click="leave"
-        >
-          Salir
-        </button>
-      </div>
-    </header>
-
-    <nav aria-label="Principal" class="border-b border-slate-200 px-4 py-2">
+        >Salir</button>
+      </p>
+    </div>
+    <nav aria-label="Principal" class="mt-2">
       <ul class="flex flex-wrap gap-2">
-        <li v-for="item in items" :key="item.path">
+        <li v-for="e in (NAV[store.user?.role] ?? [])" :key="e.path">
           <RouterLink
-            :to="item.path"
-            class="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            active-class="bg-slate-900 text-white hover:bg-slate-900"
-          >
-            <component :is="item.icon" :size="18" aria-hidden="true" />
-            {{ item.label }}
-          </RouterLink>
+            :to="e.path"
+            class="inline-flex min-h-11 items-center rounded px-3 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+            active-class="bg-slate-200 font-bold"
+          >{{ e.label }}</RouterLink>
         </li>
       </ul>
     </nav>
-
-    <main class="p-4">
-      <RouterView />
-    </main>
-  </div>
+  </header>
+  <main id="main" class="mx-auto max-w-2xl p-4"><RouterView /></main>
 </template>

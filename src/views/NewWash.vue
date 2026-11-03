@@ -1,211 +1,170 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useWashesStore } from '../stores/washes.js';
-import { normalizePlate, validatePlate } from '../domain/plate.js';
-import { categoryForCc } from '../domain/displacement.js';
-import { calculateCommission } from '../domain/commission.js';
-import { formatCOP } from '../domain/money.js';
-import { PAYMENT_METHODS } from '../domain/payment.js';
+import { ref, computed, watch, onMounted } from 'vue'
+import { listCategories, listWashTypes, listWashers, listPrices } from '../services/catalog.js'
+import { createOrder } from '../services/orders.js'
+import { getShiftStatus, openShift } from '../services/shifts.js'
+import { formatCOP, parsePesos } from '../domain/money.js'
+import { formatPercent, commissionAmount } from '../domain/commission.js'
+import { parsePlate } from '../domain/plate.js'
+import { suggestCategory } from '../domain/displacement.js'
+import { errorText } from './messages.js'
+import { getSession } from '../services/session.js'
 
-const MESSAGES = {
-  validation: 'Revisá los datos: placa, cilindraje, categoría, tipo de lavado y lavador.',
-  category_mismatch: 'El cilindraje no corresponde a la categoría elegida.',
-  courtesy_reason_required: 'Escribí el motivo de la cortesía.',
-  not_found: 'Algún dato ya no existe en el catálogo. Recargá la página.',
-  forbidden: 'No tenés permiso para registrar lavadas.',
-  business_blocked: 'La cuenta está suspendida. Contactá a soporte.',
-  load_failed: 'No se pudo cargar el catálogo. Recargá la página.',
-};
+const input = 'min-h-11 w-full rounded border border-slate-400 px-3 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none'
+const row = 'flex min-h-11 items-center gap-2'
+const focus = 'focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none'
+const btn = `min-h-11 rounded bg-blue-700 px-4 font-bold text-white hover:bg-blue-800 disabled:opacity-50 motion-reduce:transition-none ${focus}`
 
-const store = useWashesStore();
-const form = reactive({
-  plate: '',
-  cc: '',
-  categoryId: '',
-  washTypeId: '',
-  washerId: '',
-  paymentMethod: 'cash',
-  isCourtesy: false,
-  courtesyReason: '',
-});
-const error = ref('');
-const saved = ref(null);
-const loading = ref(true);
-const loadError = ref('');
-const busy = ref(false);
+const status = ref(null)
+const types = ref(['motorcycle'])
+const vehicleType = ref('motorcycle')
+const isCar = computed(() => vehicleType.value === 'car')
+const cat = ref({ categories: [], washTypes: [], washers: [], prices: [] })
+const baseText = ref('')
+const plate = ref('')
+const special = ref(false)
+const ccText = ref('')
+const categoryId = ref('')
+const washTypeId = ref('')
+const washerId = ref('')
+const courtesy = ref(false)
+const reason = ref('')
+const error = ref('')
+const success = ref('')
 
-onMounted(async () => {
-  try {
-    await store.load();
-  } catch (e) {
-    loadError.value = MESSAGES[e.code] ?? MESSAGES.load_failed;
-  } finally {
-    loading.value = false;
+const fail = (e) => { error.value = errorText(e, { not_found: 'El catálogo cambió. Revisá la selección.' }) }
+
+function load() {
+  status.value = getShiftStatus()
+  types.value = getSession()?.enabledVehicleTypes ?? ['motorcycle']
+  if (!types.value.includes(vehicleType.value)) vehicleType.value = types.value[0]
+  cat.value = {
+    categories: listCategories(), washTypes: listWashTypes(), washers: listWashers(), prices: listPrices(),
   }
-});
+  // clear selections that no longer exist after a catalog reload
+  const has = (list, id) => list.some((x) => x.id === id)
+  if (!has(cat.value.categories, categoryId.value)) categoryId.value = ''
+  if (!has(cat.value.washTypes, washTypeId.value)) washTypeId.value = ''
+  if (!has(cat.value.washers, washerId.value)) washerId.value = ''
+}
+onMounted(() => { try { load() } catch (e) { fail(e) } })
 
-const plateError = computed(() =>
-  form.plate && !validatePlate(normalizePlate(form.plate), 'motorcycle')
-    ? 'Formato no válido. Ejemplo: ABC12D.'
-    : '',
-);
-const suggested = computed(() => categoryForCc(Number(form.cc), store.categories));
-// The suggestion is only a default: the operator can pick another category.
-watch(suggested, (category) => {
-  form.categoryId = category?.id ?? '';
-});
+const cats = computed(() => cat.value.categories.filter((c) => c.vehicleType === vehicleType.value))
+const washTypes = computed(() => cat.value.washTypes.filter((t) => t.vehicleType === vehicleType.value))
+watch(vehicleType, () => { categoryId.value = ''; washTypeId.value = ''; ccText.value = '' })
 
-const selectedWasher = computed(() => store.washers.find((w) => w.id === form.washerId) ?? null);
-const listPrice = computed(() => store.priceOf(form.categoryId, form.washTypeId));
-const commission = computed(() =>
-  listPrice.value !== null && selectedWasher.value
-    ? calculateCommission(listPrice.value, selectedWasher.value.commissionBp)
-    : null,
-);
-const charge = computed(() => (form.isCourtesy ? 0 : listPrice.value));
+const cc = computed(() => (/^\d+$/.test(ccText.value.trim()) ? Number(ccText.value) : null))
+const suggested = computed(() => (cc.value ? suggestCategory(cc.value, cats.value) : null))
+watch(suggested, (s) => { if (s) categoryId.value = s.id })
 
-function resetForm() {
-  Object.assign(form, { plate: '', cc: '', categoryId: '', washTypeId: '', isCourtesy: false, courtesyReason: '' });
+const priceOf = (typeId) => cat.value.prices.find((p) => p.categoryId === categoryId.value && p.washTypeId === typeId)?.price
+const listPrice = computed(() => priceOf(washTypeId.value))
+const washer = computed(() => cat.value.washers.find((w) => w.id === washerId.value))
+const noPrice = computed(() => categoryId.value && washTypeId.value && listPrice.value === undefined)
+
+function open() {
+  error.value = ''
+  const openingCash = parsePesos(baseText.value)
+  if (openingCash === null) { error.value = 'Escribí la base en pesos, sin decimales.'; return }
+  try { openShift({ openingCash }) } catch (e) { error.value = errorText(e, { invalid_state: 'El turno ya lo abrió otro operador.' }) }
+  try { load() } catch (e) { fail(e) }
 }
 
-async function submit() {
-  error.value = '';
-  saved.value = null;
-  busy.value = true;
+function save() {
+  error.value = ''
+  success.value = ''
+  const p = parsePlate(plate.value, vehicleType.value, special.value)
+  if (!p) { error.value = `Formato no válido. Ejemplo: ${isCar.value ? 'ABC123' : 'ABC12D'}.`; return }
+  if (!isCar.value && !cc.value) { error.value = 'Escribí el cilindraje en números.'; return }
+  if (!isCar.value && !suggested.value) { error.value = 'Ninguna categoría cubre ese cilindraje.'; return }
+  if (!isCar.value && categoryId.value !== suggested.value.id) { error.value = 'Esa categoría no cubre ese cilindraje.'; return }
+  if (!categoryId.value || !washTypeId.value || !washerId.value) { error.value = 'Elegí categoría, tipo de lavado y lavador.'; return }
+  if (noPrice.value) { error.value = 'Este lavado no tiene precio. Avisale al administrador.'; return }
+  if (courtesy.value && (reason.value.trim().length < 1 || reason.value.trim().length > 200)) {
+    error.value = 'Escribí el motivo de la cortesía.'
+    return
+  }
   try {
-    saved.value = await store.save({
-      plate: form.plate,
-      cc: Number(form.cc),
-      categoryId: form.categoryId,
-      washTypeId: form.washTypeId,
-      washerId: form.washerId,
-      paymentMethod: form.paymentMethod,
-      isCourtesy: form.isCourtesy,
-      courtesyReason: form.courtesyReason,
-    });
-    resetForm();
+    const o = createOrder({
+      plate: plate.value, plateSpecial: special.value, vehicleType: vehicleType.value, cc: isCar.value ? undefined : cc.value, categoryId: categoryId.value,
+      washTypeId: washTypeId.value, washerId: washerId.value, isCourtesy: courtesy.value,
+      courtesyReason: courtesy.value ? reason.value : undefined,
+    })
+    success.value = `Lavada registrada: placa ${o.plate}, cobro ${formatCOP(o.finalPrice)}, comisión ${formatCOP(o.commissionAmount)}.`
+    plate.value = ''; special.value = false; ccText.value = ''; courtesy.value = false; reason.value = ''
   } catch (e) {
-    error.value = MESSAGES[e.code] ?? 'No se pudo guardar la lavada.';
-  } finally {
-    busy.value = false;
+    fail(e)
+    if (e.code === 'not_found' || e.code === 'shift_not_open') load()
   }
 }
 </script>
 
 <template>
-  <section class="max-w-xl space-y-6">
-    <h1 class="text-xl font-semibold">Nueva lavada</h1>
-    <p v-if="loading" class="text-slate-600">Cargando catálogo…</p>
+  <p v-if="error" role="alert" class="mb-4 rounded bg-red-100 p-3 text-red-900">{{ error }}</p>
+  <p v-if="success" role="status" class="mb-4 rounded bg-green-100 p-3 text-green-900">
+    {{ success }} <RouterLink to="/my-orders" class="underline">Ver mis órdenes del turno</RouterLink>
+  </p>
+  <p v-if="status?.unclosed.length" role="status" class="mb-4 rounded bg-yellow-100 p-3">
+    Hay un turno sin cerrar: {{ status.unclosed[0].shiftName }}. Se cierra en <RouterLink to="/shift-close" class="underline">Cierre de turno</RouterLink>.
+  </p>
 
-    <p v-else-if="loadError" role="alert" class="text-red-700">{{ loadError }}</p>
+  <form v-if="status?.current.state === 'not_opened'" class="space-y-4" @submit.prevent="open">
+    <h1 class="text-xl font-bold">Abrir {{ status.current.shiftName }}</h1>
+    <div>
+      <label for="base" class="block">Base de caja</label>
+      <input id="base" v-model="baseText" type="text" inputmode="numeric" autocomplete="off" :class="input" />
+    </div>
+    <button type="submit" :class="btn">Abrir turno</button>
+  </form>
 
-    <form v-else class="space-y-6" novalidate @submit.prevent="submit">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <label class="block space-y-1">
-          <span class="font-medium">Placa</span>
-          <input
-            v-model="form.plate"
-            name="plate"
-            autocomplete="off"
-            autocapitalize="characters"
-            :aria-invalid="plateError ? 'true' : 'false'"
-            aria-describedby="plate-help"
-            class="w-full rounded-md border border-slate-300 px-3 py-2 uppercase"
-          />
-          <span id="plate-help" class="block text-sm" :class="plateError ? 'text-red-700' : 'text-slate-600'">
-            {{ plateError || 'Moto: ABC12D o ABC12.' }}
-          </span>
-        </label>
-
-        <label class="block space-y-1">
-          <span class="font-medium">Cilindraje (cc)</span>
-          <input
-            v-model="form.cc"
-            name="cc"
-            type="number"
-            inputmode="numeric"
-            min="1"
-            class="w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-        </label>
-      </div>
-
-      <fieldset class="space-y-2">
-        <legend class="font-medium">Categoría</legend>
-        <p v-if="!form.cc" class="text-sm text-slate-600">Escribí el cilindraje para ver la categoría sugerida.</p>
-        <p v-else-if="!suggested" class="text-sm text-red-700">Ninguna categoría cubre ese cilindraje.</p>
-        <div v-for="category in store.categories" :key="category.id" class="flex items-center gap-2">
-          <input :id="`cat-${category.id}`" v-model="form.categoryId" type="radio" name="category" :value="category.id" class="size-5" />
-          <label :for="`cat-${category.id}`">
-            {{ category.name }}<span v-if="suggested?.id === category.id" class="text-sm text-blue-700"> (sugerida)</span>
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset class="space-y-2">
-        <legend class="font-medium">Tipo de lavado</legend>
-        <div v-for="washType in store.washTypes" :key="washType.id" class="flex items-center justify-between gap-2">
-          <span class="flex items-center gap-2">
-            <input :id="`wt-${washType.id}`" v-model="form.washTypeId" type="radio" name="washType" :value="washType.id" class="size-5" />
-            <label :for="`wt-${washType.id}`">{{ washType.name }}</label>
-          </span>
-          <span v-if="store.priceOf(form.categoryId, washType.id) !== null" class="tabular-nums">
-            {{ formatCOP(store.priceOf(form.categoryId, washType.id)) }}
-          </span>
-        </div>
-      </fieldset>
-
-      <label class="block space-y-1">
-        <span class="font-medium">Lavador</span>
-        <select v-model="form.washerId" name="washer" class="w-full rounded-md border border-slate-300 px-3 py-2">
-          <option value="" disabled>Elegí un lavador</option>
-          <option v-for="washer in store.washers" :key="washer.id" :value="washer.id">{{ washer.name }}</option>
-        </select>
+  <form v-else-if="status" class="space-y-4" @submit.prevent="save">
+    <h1 class="text-xl font-bold">Nueva lavada</h1>
+    <fieldset v-if="types.length > 1">
+      <legend>Tipo de vehículo</legend>
+      <label :class="row"><input v-model="vehicleType" type="radio" name="vehicleType" value="motorcycle" class="size-5" /> Moto</label>
+      <label :class="row"><input v-model="vehicleType" type="radio" name="vehicleType" value="car" class="size-5" /> Carro</label>
+    </fieldset>
+    <div>
+      <label for="plate" class="block">Placa</label>
+      <input id="plate" v-model="plate" type="text" autocapitalize="characters" autocomplete="off" :class="input" />
+      <label :class="row"><input v-model="special" type="checkbox" class="size-5" /> Placa especial</label>
+    </div>
+    <div v-if="!isCar">
+      <label for="cc" class="block">Cilindraje (cc)</label>
+      <input id="cc" v-model="ccText" type="text" inputmode="numeric" autocomplete="off" :class="input" />
+    </div>
+    <fieldset>
+      <legend>Categoría</legend>
+      <label v-for="c in cats" :key="c.id" :class="row">
+        <input v-model="categoryId" type="radio" name="category" :value="c.id" class="size-5" />
+        {{ c.name }}<span v-if="c.id === suggested?.id"> (sugerida)</span>
       </label>
-
-      <section aria-label="Vista previa" class="rounded-md bg-slate-50 p-4 space-y-1">
-        <p>Cobro: <span class="font-semibold tabular-nums">{{ charge === null ? '—' : formatCOP(charge) }}</span></p>
-        <p v-if="selectedWasher && commission !== null">
-          {{ selectedWasher.name }} recibe
-          <span class="font-semibold tabular-nums">{{ formatCOP(commission) }}</span>
-          ({{ selectedWasher.commissionBp / 100 }}% del precio de lista)
-        </p>
-      </section>
-
-      <fieldset class="space-y-2">
-        <legend class="font-medium">Pago</legend>
-        <div v-for="(label, method) in PAYMENT_METHODS" :key="method" class="flex items-center gap-2">
-          <input :id="`pay-${method}`" v-model="form.paymentMethod" type="radio" name="payment" :value="method" class="size-5" />
-          <label :for="`pay-${method}`">{{ label }}</label>
-        </div>
-      </fieldset>
-
-      <div class="space-y-2">
-        <label class="flex items-center gap-2">
-          <input v-model="form.isCourtesy" type="checkbox" name="courtesy" class="size-5" />
-          <span>Es cortesía</span>
-        </label>
-        <label v-if="form.isCourtesy" class="block space-y-1">
-          <span class="font-medium">Motivo de la cortesía</span>
-          <input v-model="form.courtesyReason" name="courtesyReason" class="w-full rounded-md border border-slate-300 px-3 py-2" />
-        </label>
-      </div>
-
-      <p v-if="error" role="alert" class="text-red-700">{{ error }}</p>
-      <!-- The live region stays in the DOM so screen readers announce the text when it changes. -->
-      <p role="status" :class="{ 'rounded-md bg-green-50 p-3 text-green-900': saved }">
-        <template v-if="saved">
-          Lavada guardada: placa {{ saved.plate }}, comisión {{ formatCOP(saved.commissionAmount) }}.
-        </template>
-      </p>
-
-      <button
-        type="submit"
-        :disabled="busy"
-        class="w-full rounded-md bg-slate-900 px-4 py-3 font-medium text-white disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-      >
-        Guardar lavada
-      </button>
-    </form>
-  </section>
+    </fieldset>
+    <fieldset>
+      <legend>Tipo de lavado</legend>
+      <label v-for="t in washTypes" :key="t.id" :class="row">
+        <input v-model="washTypeId" type="radio" name="washType" :value="t.id" class="size-5" />
+        {{ t.name }} — {{ priceOf(t.id) === undefined ? 'sin precio' : formatCOP(priceOf(t.id)) }}
+      </label>
+    </fieldset>
+    <div>
+      <label for="washer" class="block">Lavador</label>
+      <select id="washer" v-model="washerId" :class="input">
+        <option value="" disabled>Elegí un lavador</option>
+        <option v-for="w in cat.washers" :key="w.id" :value="w.id">{{ w.name }}</option>
+      </select>
+    </div>
+    <p v-if="washer && listPrice !== undefined">
+      {{ washer.name }} recibe {{ formatCOP(commissionAmount(listPrice, washer.commissionBp)) }}
+      ({{ formatPercent(washer.commissionBp) }} del precio de lista)
+    </p>
+    <div>
+      <label :class="row"><input v-model="courtesy" type="checkbox" class="size-5" /> Es cortesía</label>
+      <template v-if="courtesy">
+        <label for="reason" class="block">Motivo de la cortesía</label>
+        <input id="reason" v-model="reason" type="text" maxlength="200" :class="input" />
+      </template>
+    </div>
+    <button type="submit" :disabled="!!noPrice" :class="btn">Guardar</button>
+  </form>
 </template>
