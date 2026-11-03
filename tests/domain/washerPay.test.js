@@ -35,9 +35,8 @@ test('an order at 01:00 on Oct 16 in the shift of Oct 15 is earned in 2026-10-Q1
   assert.equal(payPeriodOf(o.businessDate, 'biweekly').periodKey, '2026-10-Q1')
 })
 test('earnedOf: done, cancelled, in_progress', () => {
-  assert.equal(earnedOf({ status: 'done', commissionAmount: 10000, commissionPaid: 0 }), 10000)
-  assert.equal(earnedOf({ status: 'cancelled', commissionAmount: 10000, commissionPaid: 10000 }), 10000)
-  assert.equal(earnedOf({ status: 'cancelled', commissionAmount: 10000, commissionPaid: 0 }), 0)
+  assert.equal(earnedOf({ status: 'done', commissionAmount: 10000 }), 10000)
+  assert.equal(earnedOf({ status: 'cancelled', commissionAmount: 10000 }), 0)
   assert.equal(earnedOf({ status: 'in_progress', commissionAmount: 10000 }), 0)
 })
 test('balanceOwed = earned - payments - signed corrections, per washer', () => {

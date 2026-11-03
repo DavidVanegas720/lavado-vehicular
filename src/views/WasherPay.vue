@@ -174,7 +174,7 @@ onMounted(() => { try { flow.businessDate = getShiftStatus().current.businessDat
       <p class="font-bold">Entra: {{ formatCOP(cash.in.total) }}</p>
       <p>Efectivo {{ formatCOP(cash.in.cash) }} · QR {{ formatCOP(cash.in.qr) }}</p>
       <p class="font-bold">Sale: {{ formatCOP(cash.out.total) }}</p>
-      <p>Caja {{ formatCOP(cash.out.till) }} · Fuera de caja {{ formatCOP(cash.out.outside) }} · Devoluciones {{ formatCOP(cash.out.refunds) }}</p>
+      <p>Caja {{ formatCOP(cash.out.till) }} · Fuera de caja {{ formatCOP(cash.out.outside) }}</p>
       <p>Correcciones: {{ formatCOP(cash.corrections) }}</p>
       <p class="font-bold">Se debe a lavadores: {{ formatCOP(cash.owed) }}</p>
     </div>

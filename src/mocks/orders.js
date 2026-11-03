@@ -33,15 +33,7 @@ function transition(orderId, input, fieldsFn) {
 }
 
 export const finishOrder = (orderId, input) => transition(orderId, input, finishFields)
-export const cancelOrder = (orderId, input) => transition(orderId, input, (o, i, u, n) => {
-  const f = cancelFields(o, i, u, n)
-  if (!f.isRefund) return f
-  const { db, business } = authorize(ACTORS)
-  const cur = shiftOf(n, business.shifts)
-  // the cash leaves the till of the instance that is current now, which must be open
-  if (o.paymentMethod === 'cash' && stateOf(db, business.id, cur.shiftKey) !== 'open') throw coded('shift_not_open')
-  return { ...f, refundShiftKey: cur.shiftKey, refundBusinessDate: cur.businessDate }
-})
+export const cancelOrder = (orderId, input) => transition(orderId, input, cancelFields)
 
 export function listShiftOrders() {
   const { user, business, db } = authorize(OPERATOR)

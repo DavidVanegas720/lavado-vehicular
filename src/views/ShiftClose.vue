@@ -103,8 +103,6 @@ function reopen() {
       </span>
       <span class="block">Base: {{ formatCOP(i.openingCash) }}</span>
       <span v-for="(v, m) in i.salesByMethod" :key="m" class="block">Ventas {{ PAYMENT_METHODS[m] }}: {{ formatCOP(v) }}</span>
-      <span class="block">Devoluciones: {{ i.refundsCount }} ({{ formatCOP(i.refundsAmount) }})</span>
-      <span v-for="(v, m) in i.refundsByMethod" :key="'r' + m" class="block">Devoluciones {{ PAYMENT_METHODS[m] }}: {{ formatCOP(v) }}</span>
       <span class="block">
         Pagos a lavadores de caja:
         <template v-if="i.tillPayments.length">{{ i.tillPayments.map((p) => `${p.washerName} ${formatCOP(p.amount)}`).join(', ') }}</template>

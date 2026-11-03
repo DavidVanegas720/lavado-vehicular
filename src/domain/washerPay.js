@@ -48,14 +48,12 @@ export function previousPeriodOf(businessDate, payFrequency) {
 }
 
 /**
- * Commission earned by one order: done pays commissionAmount, cancelled pays commissionPaid.
+ * Commission earned by one order: done pays commissionAmount, anything else 0.
  * @param {Record<string, any>} order
  * @returns {number}
  */
 export function earnedOf(order) {
-  if (order.status === 'done') return order.commissionAmount
-  if (order.status === 'cancelled') return order.commissionPaid
-  return 0
+  return order.status === 'done' ? order.commissionAmount : 0
 }
 
 /**

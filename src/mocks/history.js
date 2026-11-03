@@ -17,7 +17,7 @@ export function getPlateHistory(rawPlate) {
     .filter((o) => o.businessId === business.id && o.plate === parsed.plate)
     .reverse()
     .sort((a, b) => b.createdAt - a.createdAt)
-  const counted = orders.filter((o) => !(o.status === 'cancelled' && !o.isRefund)) // PD-7
+  const counted = orders.filter((o) => o.status !== 'cancelled') // PD-7
   const counts = {
     day: counted.filter((o) => o.businessDate === businessDate).length,
     week: counted.filter((o) => o.isoWeek === week).length,

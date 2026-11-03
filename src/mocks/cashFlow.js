@@ -11,18 +11,16 @@ export function getCashFlow({ periodType, businessDate } = {}) {
   const inside = (d) => d >= period.start && d <= period.end
   const orders = db.orders.filter((o) => o.businessId === business.id)
   const entries = db.washerPayments.filter((p) => p.businessId === business.id)
-  const done = orders.filter((o) => (o.status === 'done' || o.isRefund) && inside(o.businessDate))
+  const done = orders.filter((o) => o.status === 'done' && inside(o.businessDate))
   const sales = { cash: 0, qr: 0 }
   for (const o of done) sales[o.paymentMethod] += o.finalPrice
-  // the sale stays on its day; the refund shows on the day it was made
-  const refunds = sum(orders.filter((o) => o.isRefund && inside(o.refundBusinessDate)), (o) => o.refundAmount)
   const paid = (source) => sum(entries.filter((p) => p.type === 'payment' && p.source === source && inside(p.businessDate)), (p) => p.amount)
   const till = paid('till')
   const outside = paid('outside')
   const corrections = sum(entries.filter((p) => p.type === 'correction' && inside(p.businessDate)), (p) => p.amount)
   const owed = sum(orders.filter((o) => o.businessDate <= period.end), earnedOf) - sum(entries.filter((p) => p.businessDate <= period.end), (p) => p.amount)
   return structuredClone({
-    period, in: { ...sales, total: sales.cash + sales.qr }, out: { refunds, till, outside, total: refunds + till + outside },
+    period, in: { ...sales, total: sales.cash + sales.qr }, out: { till, outside, total: till + outside },
     corrections, owed,
   })
 }

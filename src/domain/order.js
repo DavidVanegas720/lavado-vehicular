@@ -109,89 +109,56 @@ export function finishFields(order, input, user, now) {
 }
 
 /**
- * Fields to merge on cancel. Before the wash: no commission. After it: a refund, admin only.
+ * Fields to merge on cancel. Only before the wash: a done order is final and its commission is never reversed.
  * @param {Order} order
- * @param {{ reason: string, washerPaid?: boolean }} input
+ * @param {{ reason: string }} input
  * @param {User} user
  * @param {Date} now
  * @returns {Order}
  */
 export function cancelFields(order, input, user, now) {
-  const refund = order.status === 'done'
-  if (refund ? user.role !== 'admin' : !canActOn(order, user)) throw coded('forbidden', 'Not allowed')
-  if (order.status !== 'in_progress' && !refund) throw coded('invalid_state', 'Order cannot be cancelled')
-  if (refund && order.finalPrice === 0) throw coded('invalid_state', 'A courtesy has nothing to refund')
-  const cancelReason = reason(input?.reason)
-  if (refund && typeof input.washerPaid !== 'boolean') throw coded('validation', 'washerPaid must be a boolean')
-  const washerPaid = refund && input.washerPaid === true
-  return {
-    status: 'cancelled',
-    cancelledAt: now,
-    cancelledBy: user.uid,
-    cancelReason,
-    isRefund: refund,
-    refundAmount: refund ? order.finalPrice : 0,
-    washerPaid,
-    commissionPaid: washerPaid ? order.commissionAmount : 0,
-  }
+  if (!canActOn(order, user)) throw coded('forbidden', 'Not allowed')
+  if (order.status !== 'in_progress') throw coded('invalid_state', 'Only an order in progress can be cancelled')
+  return { status: 'cancelled', cancelledAt: now, cancelledBy: user.uid, cancelReason: reason(input?.reason) }
 }
 
 /**
- * Totals of one shift instance X. Sales: X's own orders that were paid (done or later refunded), so a refunded sale stays
- * a sale of its own instance. Refunds: those made during X (any method, any order's instance). Washer pay: X's own orders.
+ * Totals of one shift instance X, from its own orders. Sales and washer pay come from done orders only; a cancelled
+ * order adds its washer with 0.
  * @param {Order[]} orders the instance's own orders
- * @param {Order[]} [refunds] refunds made during this instance
  */
-export function shiftTotals(orders, refunds = []) {
+export function shiftTotals(orders) {
   const salesByMethod = { cash: 0, qr: 0 }
   /** @type {Record<string, { name: string, amount: number }>} */
   const washerPay = {}
-  const refundsByMethod = { cash: 0, qr: 0 }
   let unfinishedCount = 0
   for (const o of orders) {
     assertPesos(o.finalPrice, 'finalPrice')
     let pay = 0
-    if (o.status === 'done' || o.isRefund) salesByMethod[/** @type {PaymentMethod} */ (o.paymentMethod)] += o.finalPrice
-    if (o.status === 'done') pay = o.commissionAmount
-    else if (o.status === 'cancelled') pay = o.commissionPaid
-    else unfinishedCount++
-    assertPesos(pay, 'commission')
+    if (o.status === 'done') {
+      salesByMethod[/** @type {PaymentMethod} */ (o.paymentMethod)] += o.finalPrice
+      pay = assertPesos(o.commissionAmount, 'commission')
+    } else if (o.status === 'in_progress') unfinishedCount++
     if (o.status !== 'in_progress') {
       washerPay[o.washerId] ??= { name: o.washerName, amount: 0 }
       washerPay[o.washerId].amount += pay
     }
   }
-  for (const r of refunds) refundsByMethod[/** @type {PaymentMethod} */ (r.paymentMethod)] += assertPesos(r.refundAmount, 'refundAmount')
-  const refundsAmount = refundsByMethod.cash + refundsByMethod.qr
   const sales = salesByMethod.cash + salesByMethod.qr
   const paid = Object.values(washerPay).reduce((s, w) => s + w.amount, 0)
-  return {
-    salesByMethod,
-    sales,
-    refundsCount: refunds.length,
-    refundsAmount,
-    refundsByMethod,
-    washerPay,
-    ownerShare: sales - refundsAmount - paid,
-    unfinishedCount,
-  }
+  return { salesByMethod, sales, washerPay, ownerShare: sales - paid, unfinishedCount }
 }
 
 /**
- * Cash that should be in the till: base + paid cash sales (done or refunded) - refunds made during this
- * instance (any method; only cash leaves the till) - washer payments from the till.
+ * Cash that should be in the till: base + cash sales of done orders - washer payments from the till.
  * @param {number} openingCash
  * @param {Order[]} orders the instance's own orders
  * @param {{ amount: number }[]} [tillPayments] till payments of the same shift instance
- * @param {Order[]} [refunds] refunds made during this instance (any method; only cash leaves the till)
  * @returns {number}
  */
-export function expectedCash(openingCash, orders, tillPayments = [], refunds = []) {
+export function expectedCash(openingCash, orders, tillPayments = []) {
   let total = assertPesos(openingCash, 'openingCash')
-  for (const o of orders) {
-    if (o.paymentMethod === 'cash' && (o.status === 'done' || o.isRefund)) total += assertPesos(o.finalPrice, 'finalPrice')
-  }
-  for (const o of refunds) if (o.paymentMethod === 'cash') total -= assertPesos(o.refundAmount, 'refundAmount')
+  for (const o of orders) if (o.paymentMethod === 'cash' && o.status === 'done') total += assertPesos(o.finalPrice, 'finalPrice')
   for (const p of tillPayments) total -= assertPesos(p.amount, 'amount')
   return total
 }

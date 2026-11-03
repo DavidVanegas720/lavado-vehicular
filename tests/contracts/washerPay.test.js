@@ -67,7 +67,7 @@ test('cash flow splits till and outside', () => {
   assert.equal(p.shiftKey, null)
   const f = getCashFlow({ periodType: 'monthly', businessDate: '2026-10-29' })
   assert.deepEqual(f.in, { cash: 25000, qr: 0, total: 25000 })
-  assert.deepEqual(f.out, { refunds: 0, till: 4000, outside: 2000, total: 6000 })
+  assert.deepEqual(f.out, { till: 4000, outside: 2000, total: 6000 })
   assert.equal(f.owed, 4000)
 })
 
@@ -82,21 +82,6 @@ test('outside payment above the balance, unknown washer, operators', () => {
   assert.throws(() => recordOutsidePayment({ washerId: 'pedro', amount: 1 }), code('forbidden'))
   assert.throws(() => recordCorrection({ washerId: 'pedro', amount: 1, reason: 'x' }), code('forbidden'))
   assert.throws(() => getCashFlow({ periodType: 'monthly', businessDate: '2026-10-29' }), code('forbidden'))
-})
-
-test('refund counts on its refundBusinessDate, the sale stays on its own day', () => {
-  const id = seed()
-  setMockNow(new Date('2026-11-02T15:00:00Z'))
-  signIn('carlos')
-  openShift({ openingCash: 0 })
-  signIn('ana')
-  cancelOrder(id, { reason: 'reclamo', washerPaid: true })
-  const d1 = getCashFlow({ periodType: 'daily', businessDate: '2026-10-29' })
-  const d2 = getCashFlow({ periodType: 'daily', businessDate: '2026-11-02' })
-  assert.equal(d1.in.total, 25000) // the sale stays on its day
-  assert.equal(d1.out.refunds, 0)
-  assert.equal(d2.in.total, 0)
-  assert.equal(d2.out.refunds, 25000)
 })
 
 test('deactivated washer keeps showing and can be paid; daily default is current', () => {

@@ -74,31 +74,30 @@ test('finish sets done and payment; second finish and bad payment fail', () => {
   assert.throws(() => finishOrder(o.id, { paymentMethod: 'cash' }), code('invalid_state'))
 })
 
-test('cancel before the wash: reason required, commissionPaid 0; operator cannot cancel a done one', () => {
+test('cancel before the wash: reason required; a done order is final', () => {
   const a = createOrder(wash)
   assert.throws(() => cancelOrder(a.id, { reason: '' }), code('validation'))
   const c = cancelOrder(a.id, { reason: 'cliente se fue' })
   assert.equal(c.status, 'cancelled')
-  assert.equal(c.isRefund, false)
-  assert.equal(c.commissionPaid, 0)
+  assert.equal('isRefund' in c, false)
+  assert.equal('commissionPaid' in c, false)
   assert.throws(() => cancelOrder(a.id, { reason: 'otra vez' }), code('invalid_state'))
   const b = createOrder({ ...wash, plate: 'XYZ98' })
   finishOrder(b.id, { paymentMethod: 'cash' })
-  assert.throws(() => cancelOrder(b.id, { reason: 'x', washerPaid: true }), code('forbidden'))
+  assert.throws(() => cancelOrder(b.id, { reason: 'x' }), code('invalid_state'))
 })
 
-test('admin refund of a done order: washerPaid true pays commission, false does not', () => {
+test('admin cannot cancel a done order', () => {
   const a = createOrder(wash)
   const b = createOrder({ ...wash, plate: 'XYZ98' })
   finishOrder(a.id, { paymentMethod: 'cash' })
-  finishOrder(b.id, { paymentMethod: 'cash' })
+  finishOrder(b.id, { paymentMethod: 'qr' })
   signIn('ana')
-  assert.throws(() => cancelOrder(a.id, { reason: 'mal lavado' }), code('validation'))
-  const ra = cancelOrder(a.id, { reason: 'mal lavado', washerPaid: true })
-  assert.equal(ra.isRefund, true)
-  assert.equal(ra.refundAmount, 25000)
-  assert.equal(ra.commissionPaid, 10000)
-  assert.equal(cancelOrder(b.id, { reason: 'mal lavado', washerPaid: false }).commissionPaid, 0)
+  assert.throws(() => cancelOrder(a.id, { reason: 'mal lavado' }), code('invalid_state'))
+  assert.throws(() => cancelOrder(b.id, { reason: 'mal lavado' }), code('invalid_state'))
+  signIn('carlos')
+  const st = Object.fromEntries(listShiftOrders().map((o) => [o.id, o.status]))
+  assert.deepEqual([st[a.id], st[b.id]], ['done', 'done'])
 })
 
 test('another operator cannot finish or cancel an order they did not create', () => {

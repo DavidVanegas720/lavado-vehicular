@@ -89,85 +89,54 @@ test('finishFields enforces creator, state and method', () => {
   assert.throws(() => finishFields({ ...base(), status: 'done' }, { paymentMethod: 'cash' }, carlos, later), code('invalid_state'))
   assert.throws(() => finishFields(base(), { paymentMethod: 'card' }, carlos, later), code('validation'))
 })
-test('cancel before the wash pays nothing', () => {
-  const f = cancelFields(base(), { reason: ' error ', washerPaid: true }, carlos, later)
-  assert.deepEqual(f, {
-    status: 'cancelled', cancelledAt: later, cancelledBy: 'carlos', cancelReason: 'error',
-    isRefund: false, refundAmount: 0, washerPaid: false, commissionPaid: 0,
-  })
+test('cancel before the wash: cancelled fields, reason required, creator only', () => {
+  const f = cancelFields(base(), { reason: ' error ' }, carlos, later)
+  assert.deepEqual(f, { status: 'cancelled', cancelledAt: later, cancelledBy: 'carlos', cancelReason: 'error' })
   assert.throws(() => cancelFields(base(), { reason: '' }, carlos, later), code('validation'))
   assert.throws(() => cancelFields(base(), { reason: 'x' }, laura, later), code('forbidden'))
 })
-test('cancel after the wash is an admin refund', () => {
+test('a done order cannot be cancelled', () => {
   const done = { ...base(), status: 'done', paymentMethod: 'cash' }
-  const paid = cancelFields(done, { reason: 'x', washerPaid: true }, ana, later)
-  assert.equal(paid.isRefund, true)
-  assert.equal(paid.refundAmount, 25000)
-  assert.equal(paid.commissionPaid, 10000)
-  const unpaid = cancelFields(done, { reason: 'x', washerPaid: false }, ana, later)
-  assert.equal(unpaid.washerPaid, false)
-  assert.equal(unpaid.commissionPaid, 0)
-  assert.throws(() => cancelFields(done, { reason: 'x', washerPaid: true }, carlos, later), code('forbidden'))
-  assert.throws(() => cancelFields(done, { reason: 'x' }, ana, later), code('validation'))
-  assert.throws(() => cancelFields({ ...done, isCourtesy: true, finalPrice: 0 }, { reason: 'x', washerPaid: true }, ana, later), code('invalid_state'))
-  assert.throws(() => cancelFields({ ...done, status: 'cancelled' }, { reason: 'x' }, ana, later), code('invalid_state'))
+  assert.throws(() => cancelFields(done, { reason: 'x' }, ana, later), code('invalid_state'))
+  assert.throws(() => cancelFields(done, { reason: 'x' }, carlos, later), code('invalid_state'))
+  assert.throws(() => cancelFields(done, { reason: 'x' }, laura, later), code('forbidden'))
+  assert.throws(() => cancelFields({ ...base(), status: 'cancelled' }, { reason: 'x' }, ana, later), code('invalid_state'))
 })
 
 const mk = (over) => ({ ...base(), ...over })
 const orders = () => {
   const done = (o) => mk({ status: 'done', ...o })
-  const refund = (washerPaid) => {
-    const d = done({ paymentMethod: 'cash' })
-    return { ...d, ...cancelFields(d, { reason: 'x', washerPaid }, ana, later) }
-  }
   return [
     done({ paymentMethod: 'cash' }),
     done({ paymentMethod: 'qr' }),
     done({ paymentMethod: 'cash', isCourtesy: true, finalPrice: 0 }),
     { ...mk({}), ...cancelFields(base(), { reason: 'x' }, carlos, later) },
-    refund(true),
-    refund(false),
     mk({}),
   ]
 }
 
-test('shiftTotals sums sales, refunds, washer pay and owner share', () => {
-  const t = shiftTotals(orders(), orders().filter((o) => o.isRefund))
-  assert.deepEqual(t.salesByMethod, { cash: 75000, qr: 25000 })
-  assert.equal(t.sales, 100000)
-  assert.equal(t.refundsCount, 2)
-  assert.equal(t.refundsAmount, 50000)
-  assert.deepEqual(t.refundsByMethod, { cash: 50000, qr: 0 })
-  assert.equal(t.washerPay.p.amount, 30000 + 10000) // 3 done + 1 paid refund
-  assert.equal(t.washerPay.p.name, 'Pedro')
-  assert.equal(t.ownerShare, 10000)
-  assert.equal(t.unfinishedCount, 1)
-})
-test('shiftTotals without refunds made here counts none, and refunded sales stay sales', () => {
+test('shiftTotals sums sales, washer pay and owner share, without refunds', () => {
   const t = shiftTotals(orders())
-  assert.equal(t.refundsCount, 0)
-  assert.equal(t.refundsAmount, 0)
-  assert.equal(t.salesByMethod.cash, 75000)
-})
-test('expectedCash ignores qr refunds', () => {
-  assert.equal(expectedCash(0, [], [], [{ isRefund: true, paymentMethod: 'qr', refundAmount: 18000 }]), 0)
+  assert.deepEqual(t.salesByMethod, { cash: 25000, qr: 25000 })
+  assert.equal(t.sales, 50000)
+  assert.equal(t.washerPay.p.amount, 30000)
+  assert.equal(t.washerPay.p.name, 'Pedro')
+  assert.equal(t.ownerShare, 20000)
+  assert.equal(t.unfinishedCount, 1)
+  assert.equal('refundsCount' in t, false)
 })
 test('expectedCash equals the terms shown by shiftTotals', () => {
-  const refunds = orders().filter((o) => o.isRefund)
-  const t = shiftTotals(orders(), refunds)
-  assert.equal(expectedCash(50000, orders(), [{ amount: 5000 }], refunds), 50000 + t.salesByMethod.cash - t.refundsByMethod.cash - 5000)
-  assert.equal(expectedCash(50000, orders(), [{ amount: 5000 }], refunds), 70000)
+  const t = shiftTotals(orders())
+  assert.equal(expectedCash(50000, orders(), [{ amount: 5000 }]), 50000 + t.salesByMethod.cash - 5000)
+  assert.equal(expectedCash(50000, orders(), [{ amount: 5000 }]), 70000)
 })
-test('expectedCash is base + paid cash sales - refunds from this till - till payments', () => {
-  const refunds = orders().filter((o) => o.isRefund)
-  assert.equal(expectedCash(50000, orders(), [], refunds), 50000 + 75000 - 50000) // paid cash: 25000 + 0 + 25000 + 25000
-  assert.equal(expectedCash(50000, orders()), 125000) // the refunds were paid from another till
+test('expectedCash is base + cash sales - till payments', () => {
+  assert.equal(expectedCash(50000, orders()), 75000)
   assert.equal(expectedCash(0, []), 0)
   assert.throws(() => expectedCash(1.5, []), TypeError)
 })
 test('expectedCash subtracts the till washer payments', () => {
-  const refunds = orders().filter((o) => o.isRefund)
-  assert.equal(expectedCash(50000, orders(), [{ amount: 20000 }, { amount: 5000 }], refunds), 50000 + 75000 - 50000 - 25000)
+  assert.equal(expectedCash(50000, orders(), [{ amount: 20000 }, { amount: 5000 }]), 50000 + 25000 - 25000)
   assert.equal(expectedCash(50000, [{ status: 'done', paymentMethod: 'cash', finalPrice: 25000 }], [{ amount: 20000 }]), 55000)
   assert.throws(() => expectedCash(0, [], [{ amount: 1.5 }]), TypeError)
 })

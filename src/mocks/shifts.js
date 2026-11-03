@@ -8,9 +8,6 @@ const OPERATOR = ['operator']
 const ADMIN = ['admin']
 const events = (db, businessId) => db.shiftEvents.filter((e) => e.businessId === businessId)
 const pesos = (n) => Number.isInteger(n) && n >= 0
-/** Refunds made during an instance, whatever the order's own instance (D1). */
-const refundsIn = (db, businessId, shiftKey) =>
-  db.orders.filter((o) => o.businessId === businessId && o.isRefund && o.refundShiftKey === shiftKey)
 
 /** Shift state of one instance of a business. Used by orders.js too. */
 export const stateOf = (db, businessId, shiftKey) => shiftState(events(db, businessId), shiftKey)
@@ -56,11 +53,10 @@ export function closeShift(shiftKey, input) {
   // every operator's orders count, not only the caller's
   const orders = db.orders.filter((o) => o.businessId === business.id && o.shiftKey === shiftKey)
   if (orders.some((o) => o.status === 'in_progress')) throw coded('invalid_state')
-  const refunds = refundsIn(db, business.id, shiftKey)
-  const expected = expectedCash(opened.openingCash, orders, tillPaymentsOf(db, business.id, shiftKey), refunds)
+  const expected = expectedCash(opened.openingCash, orders, tillPaymentsOf(db, business.id, shiftKey))
   const close = {
     businessId: business.id, type: 'close', shiftKey, countedCash: input.countedCash, expectedCash: expected,
-    difference: input.countedCash - expected, totals: structuredClone(shiftTotals(orders, refunds)), at: now(), by: user.uid,
+    difference: input.countedCash - expected, totals: structuredClone(shiftTotals(orders)), at: now(), by: user.uid,
   }
   db.shiftEvents.push(close)
   return structuredClone(close)
@@ -73,11 +69,11 @@ export function getClosePreview(shiftKey) {
   const opened = evs.findLast((e) => e.shiftKey === shiftKey && e.type === 'open')
   if (!opened || shiftState(evs, shiftKey) !== 'open') throw coded('invalid_state')
   const orders = db.orders.filter((o) => o.businessId === business.id && o.shiftKey === shiftKey)
-  const { salesByMethod, refundsCount, refundsAmount, refundsByMethod } = shiftTotals(orders, refundsIn(db, business.id, shiftKey))
+  const { salesByMethod } = shiftTotals(orders)
   const name = (id) => db.users.find((u) => u.id === id)?.name ?? id
   return structuredClone({
     shiftKey, shiftName: opened.shiftName, endsAt: opened.endsAt, openingCash: opened.openingCash,
-    salesByMethod, refundsCount, refundsAmount, refundsByMethod, tillPayments: tillPaymentsOf(db, business.id, shiftKey),
+    salesByMethod, tillPayments: tillPaymentsOf(db, business.id, shiftKey),
     unfinished: orders.filter((o) => o.status === 'in_progress').map((o) => ({ id: o.id, plate: o.plate, createdByName: name(o.createdBy) })),
   })
 }

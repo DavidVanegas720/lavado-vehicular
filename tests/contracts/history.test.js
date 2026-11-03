@@ -45,13 +45,13 @@ test('operator is forbidden', () => {
   assert.throws(() => getPlateHistory('ABC12D'), code('forbidden'))
 })
 
-test('cancel before the wash is excluded; refund still counts; totalWashes never decrements', () => {
+test('cancel before the wash is excluded; totalWashes never decrements', () => {
   const a = washOn('2026-10-29')
   const b = createOrder(wash)
   cancelOrder(a.id, { reason: 'error' })
   finishOrder(b.id, { paymentMethod: 'cash' })
   signIn('ana')
-  cancelOrder(b.id, { reason: 'reclamo', washerPaid: false })
+  assert.throws(() => cancelOrder(b.id, { reason: 'reclamo' }), code('invalid_state'))
   const h = getPlateHistory('ABC12D')
   assert.equal(h.counts.all, 1)
   assert.equal(h.orders.length, 2)

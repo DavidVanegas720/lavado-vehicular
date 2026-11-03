@@ -21,7 +21,6 @@ const operatorId = ref('')
 const onlyCourtesy = ref(false)
 const actionId = ref('') // order with its form open
 const reason = ref('')
-const washerPaid = ref('') // 'yes' | 'no' | ''
 
 const time = (d) => d.toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short', hour12: false })
 const operators = computed(() => [...new Map((data.value?.orders ?? []).map((o) => [o.createdBy, o.createdByName]))])
@@ -33,23 +32,22 @@ function load() {
 }
 onMounted(load)
 
-function open(o) { actionId.value = o.id; reason.value = ''; washerPaid.value = ''; error.value = ''; success.value = '' }
+function open(o) { actionId.value = o.id; reason.value = ''; error.value = ''; success.value = '' }
 
 function submit(o) {
   const text = reason.value.trim()
-  const refund = o.status === 'done'
-  if (!text || text.length > 200 || (refund && !washerPaid.value)) {
-    error.value = refund ? 'Escribí el motivo (1 a 200 caracteres) y respondé si se le paga la comisión al lavador.' : 'Escribí el motivo (1 a 200 caracteres).'
+  if (!text || text.length > 200) {
+    error.value = 'Escribí el motivo (1 a 200 caracteres).'
     success.value = ''
     return
   }
   error.value = ''
   success.value = ''
   try {
-    cancelOrder(o.id, refund ? { reason: text, washerPaid: washerPaid.value === 'yes' } : { reason: text })
-    success.value = refund ? 'Dinero devuelto.' : 'Orden anulada.'
+    cancelOrder(o.id, { reason: text })
+    success.value = 'Orden anulada.'
     actionId.value = ''
-  } catch (e) { error.value = errorText(e, { shift_not_open: 'Para devolver efectivo, un operador tiene que abrir el turno actual.' }) }
+  } catch (e) { error.value = errorText(e) }
   load()
 }
 </script>
@@ -75,8 +73,6 @@ function submit(o) {
     <div v-if="snap" :class="card">
       <h3 class="mb-2 font-bold">Último cierre</h3>
       <p v-for="(v, m) in snap.salesByMethod" :key="m">Ventas {{ PAYMENT_METHODS[m] }}: {{ formatCOP(v) }}</p>
-      <p>Devoluciones: {{ snap.refundsCount }} ({{ formatCOP(snap.refundsAmount) }})</p>
-      <p v-if="snap.refundsByMethod" v-for="(v, m) in snap.refundsByMethod" :key="'r' + m">Devoluciones {{ PAYMENT_METHODS[m] }}: {{ formatCOP(v) }}</p>
       <p v-for="(w, id) in snap.washerPay" :key="id">Pago a {{ w.name }}: {{ formatCOP(w.amount) }}</p>
       <p>Parte del dueño: {{ formatCOP(snap.ownerShare) }}</p>
       <p>
@@ -105,21 +101,16 @@ function submit(o) {
           <p>{{ o.washTypeName }}, {{ o.categoryName }} — {{ formatCOP(o.finalPrice) }}</p>
           <p>Lavador: {{ o.washerName }} — Operador: {{ o.createdByName }}</p>
           <p v-if="o.isCourtesy">Cortesía: {{ o.courtesyReason }}</p>
-          <p v-if="o.status === 'cancelled'">{{ o.isRefund ? 'Devolución' : 'Anulada' }}: {{ o.cancelReason }}<template v-if="o.isRefund"> (comisión al lavador: {{ o.washerPaid ? 'sí' : 'no' }})</template></p>
-          <button v-if="(o.status === 'in_progress' || (o.status === 'done' && o.finalPrice > 0)) && actionId !== o.id" type="button" :class="`${btn} mt-2`" :aria-label="`${o.status === 'done' ? 'Devolver dinero' : 'Anular'} orden de ${o.plate}`" @click="open(o)">
-            {{ o.status === 'done' ? 'Devolver dinero' : 'Anular' }}
+          <p v-if="o.status === 'cancelled'">Anulada: {{ o.cancelReason }}</p>
+          <button v-if="o.status === 'in_progress' && actionId !== o.id" type="button" :class="`${btn} mt-2`" :aria-label="`Anular orden de ${o.plate}`" @click="open(o)">
+            Anular
           </button>
           <form v-if="actionId === o.id" class="mt-2 space-y-3" @submit.prevent="submit(o)">
             <div>
               <label :for="`r-${o.id}`" class="block">Motivo</label>
               <input :id="`r-${o.id}`" v-model="reason" type="text" maxlength="200" :class="input" />
             </div>
-            <fieldset v-if="o.status === 'done'">
-              <legend>¿Se le paga la comisión al lavador?</legend>
-              <label class="flex min-h-11 items-center gap-2"><input v-model="washerPaid" type="radio" :name="`wp-${o.id}`" value="yes" class="size-5" /> Sí</label>
-              <label class="flex min-h-11 items-center gap-2"><input v-model="washerPaid" type="radio" :name="`wp-${o.id}`" value="no" class="size-5" /> No</label>
-            </fieldset>
-            <button type="submit" :class="btn" :aria-label="`${o.status === 'done' ? 'Devolver dinero' : 'Anular'} orden de ${o.plate}`">{{ o.status === 'done' ? 'Devolver dinero' : 'Anular' }}</button>
+            <button type="submit" :class="btn" :aria-label="`Anular orden de ${o.plate}`">Anular</button>
           </form>
         </li>
       </ul>
