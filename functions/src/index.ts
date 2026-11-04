@@ -2,10 +2,12 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { onRequest } from 'firebase-functions/v2/https';
 import { AppModule } from './app.module.js';
+import { ErrorFilter } from './errors.js';
 
 export async function createApp() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
+  app.useGlobalFilters(new ErrorFilter());
   await app.init();
   return app;
 }
