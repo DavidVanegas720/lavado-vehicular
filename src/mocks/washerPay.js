@@ -1,5 +1,6 @@
 import { authorize, now } from './session.js'
 import { coded } from './errors.js'
+import { CLIENT_ID } from './orders.js'
 import { shiftOf, shiftState } from '../domain/shift.js'
 import { payPeriodOf, previousPeriodOf, earnedOf, balanceOwed } from '../domain/washerPay.js'
 
@@ -34,6 +35,13 @@ export async function listTillPayables() {
 
 export async function recordTillPayment(shiftKey, input) {
   const { user, business, db } = authorize(OPERATOR)
+  const id = input?.id
+  if (id !== undefined && !(typeof id === 'string' && CLIENT_ID.test(id))) throw coded('validation')
+  const prior = id && db.washerPayments.find((p) => p.id === id && p.businessId === business.id)
+  if (prior) {
+    if (prior.recordedBy !== user.uid) throw coded('invalid_state')
+    return structuredClone(prior) // replay: no second payment
+  }
   const state = shiftState(db.shiftEvents.filter((e) => e.businessId === business.id), shiftKey)
   if (state === 'not_opened') throw coded('shift_not_open')
   if (state === 'closed') throw coded('shift_closed')
@@ -46,7 +54,7 @@ export async function recordTillPayment(shiftKey, input) {
   if (!Number.isInteger(input.amount) || input.amount < 1 || input.amount > owed) throw coded('validation')
   const { periodKey } = (period === 'current' ? payPeriodOf : previousPeriodOf)(businessDate, washer.payFrequency)
   const payment = {
-    businessId: business.id, type: 'payment', washerId: washer.id, washerName: washer.name,
+    ...(id && { id }), businessId: business.id, type: 'payment', washerId: washer.id, washerName: washer.name,
     payFrequency: washer.payFrequency, periodKey, amount: input.amount, source: 'till', shiftKey,
     businessDate, paidAt: now(), recordedBy: user.uid, note: typeof input.note === 'string' ? input.note.trim() : '',
   }

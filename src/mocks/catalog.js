@@ -27,6 +27,11 @@ export const listWashTypes = read('washTypes')
 export const listWashers = read('washers')
 export const listPrices = read('prices')
 
+/** One read for the order form: same visibility as the four reads above. */
+export const listCatalog = async () => ({
+  categories: await listCategories(), washTypes: await listWashTypes(), washers: await listWashers(), prices: await listPrices(),
+})
+
 const name = (v) => {
   const n = typeof v === 'string' ? v.trim() : ''
   if (n.length < 1 || n.length > 60) throw coded('validation')

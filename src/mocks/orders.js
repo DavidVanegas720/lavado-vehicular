@@ -6,14 +6,22 @@ import { shiftOf } from '../domain/shift.js'
 import { buildOrder, finishFields, cancelFields } from '../domain/order.js'
 
 const OPERATOR = ['operator']
+export const CLIENT_ID = /^[0-9a-f-]{36}$/ // same rule as the API (C7)
 const ACTORS = ['admin', 'operator']
 
 export async function createOrder(input) {
   const { user, business, db } = authorize(OPERATOR)
+  const id = input?.id
+  if (id !== undefined && !(typeof id === 'string' && CLIENT_ID.test(id))) throw coded('validation')
+  const prior = id && db.orders.find((o) => o.id === id && o.businessId === business.id)
+  if (prior) {
+    if (prior.createdBy !== user.uid) throw coded('invalid_state')
+    return structuredClone(prior) // replay of the same create: no second order
+  }
   if (!business.enabledVehicleTypes.includes(input?.vehicleType ?? 'motorcycle')) throw coded('forbidden')
   const order = buildOrder(input ?? {}, activeSnapshot(db.catalogs[business.id]), user, now(), business.shifts)
   if (stateOf(db, business.id, order.shiftKey) !== 'open') throw coded('shift_not_open')
-  const saved = { ...order, id: `o${db.nextId++}`, businessId: business.id }
+  const saved = { ...order, id: id ?? `o${db.nextId++}`, businessId: business.id }
   db.orders.push(saved)
   const v = ((db.vehicles[business.id] ??= {})[saved.plate] ??= {
     plate: saved.plate, vehicleType: saved.vehicleType, plateSpecial: saved.plateSpecial, totalWashes: 0, firstWashAt: saved.createdAt,

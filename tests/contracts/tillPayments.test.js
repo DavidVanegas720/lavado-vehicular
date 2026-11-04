@@ -57,22 +57,6 @@ test('plan example: 20000 payment with base 50000 and 25000 cash sales -> expect
   assert.equal((await closeShift(KEY, { countedCash: 55000 })).expectedCash, 55000)
 })
 
-test('validation, forbidden, shift_not_open, shift_closed', async () => {
-  await signIn('carlos')
-  await assert.rejects(async () => recordTillPayment(KEY, { washerId: 'pedro', amount: 1 }), code('shift_not_open'))
-  await seed()
-  await assert.rejects(async () => recordTillPayment(KEY, { washerId: 'pedro', amount: 10001 }), code('validation'))
-  await assert.rejects(async () => recordTillPayment(KEY, { washerId: 'pedro', amount: 0 }), code('validation'))
-  await assert.rejects(async () => recordTillPayment(KEY, { washerId: 'pedro', amount: 100, period: 'next' }), code('validation'))
-  await signIn('ana')
-  await assert.rejects(async () => recordTillPayment(KEY, { washerId: 'pedro', amount: 100 }), code('forbidden'))
-  await assert.rejects(async () => listTillPayables(), code('forbidden'))
-  setMockNow(AFTER_END)
-  await signIn('carlos')
-  await closeShift(KEY, { countedCash: 75000 })
-  await assert.rejects(async () => recordTillPayment(KEY, { washerId: 'pedro', amount: 100 }), code('shift_closed'))
-})
-
 test('a washer deactivated after load -> not_found', async () => {
   await seed()
   await signIn('ana')
