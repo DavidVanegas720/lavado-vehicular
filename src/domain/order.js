@@ -44,13 +44,14 @@ export function buildOrder(input, catalogSnapshot, user, now, shifts) {
   const plate = parsePlate(input.plate, vehicleType, !!input.plateSpecial)
   if (!plate) throw coded('validation', 'Invalid plate')
   const isCar = vehicleType === 'car'
-  if (!isCar && !suggestCategory(input.cc, catalogSnapshot.categories.filter((c) => c.vehicleType === vehicleType)))
+  const cc = input.cc ?? 0 // 0 is never a valid cc: suggestCategory rejects it
+  if (!isCar && !suggestCategory(cc,catalogSnapshot.categories.filter((c) => c.vehicleType === vehicleType)))
     throw coded('validation', 'No category covers that cc')
   const category = catalogSnapshot.categories.find((c) => c.id === input.categoryId && c.vehicleType === vehicleType)
   const washType = catalogSnapshot.washTypes.find((w) => w.id === input.washTypeId && w.vehicleType === vehicleType)
   const washer = catalogSnapshot.washers.find((w) => w.id === input.washerId)
   if (!category || !washType || !washer) throw coded('not_found', 'Catalog item not found')
-  if (!isCar && !(input.cc >= category.minCc && input.cc <= category.maxCc)) throw coded('validation', 'cc outside category')
+  if (!isCar && !(cc >= category.minCc && cc <= category.maxCc)) throw coded('validation', 'cc outside category')
   const entry = catalogSnapshot.prices.find((p) => p.categoryId === category.id && p.washTypeId === washType.id)
   if (!entry) throw coded('not_found', 'Price not found')
   const listPrice = assertPesos(entry.price, 'listPrice')

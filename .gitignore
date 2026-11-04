@@ -5,3 +5,5 @@ dist
 !.env.example
 .playwright-mcp/
 docs/
+functions/lib
+functions/src/domain
