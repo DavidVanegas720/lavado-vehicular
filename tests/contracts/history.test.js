@@ -1,9 +1,9 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
-import { openShift } from '../../src/services/shifts.js'
-import { createOrder, cancelOrder, finishOrder } from '../../src/services/orders.js'
-import { getPlateHistory } from '../../src/services/history.js'
+import { openShift } from '../../src/mocks/shifts.js'
+import { createOrder, cancelOrder, finishOrder } from '../../src/mocks/orders.js'
+import { getPlateHistory } from '../../src/mocks/history.js'
 
 const wash = { plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' }
 const code = (c) => (e) => e.code === c

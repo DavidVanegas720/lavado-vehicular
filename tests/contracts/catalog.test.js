@@ -1,9 +1,9 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
-import { openShift } from '../../src/services/shifts.js'
-import { createOrder } from '../../src/services/orders.js'
-import * as cat from '../../src/services/catalog.js'
+import { openShift } from '../../src/mocks/shifts.js'
+import { createOrder } from '../../src/mocks/orders.js'
+import * as cat from '../../src/mocks/catalog.js'
 
 const DAY1 = new Date('2026-10-29T15:00:00Z')
 const wash = { plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' }

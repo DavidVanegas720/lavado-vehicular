@@ -1,10 +1,10 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { authorize, signIn, resetMock, setMockNow, listDemoUsers } from '../../src/mocks/session.js'
-import { listOperators, createOperator, renameOperator, setOperatorActive } from '../../src/services/operators.js'
-import { openShift, getShiftStatus } from '../../src/services/shifts.js'
-import { createOrder, listShiftOrders } from '../../src/services/orders.js'
-import { listCategories } from '../../src/services/catalog.js'
+import { listOperators, createOperator, renameOperator, setOperatorActive } from '../../src/mocks/operators.js'
+import { openShift, getShiftStatus } from '../../src/mocks/shifts.js'
+import { createOrder, listShiftOrders } from '../../src/mocks/orders.js'
+import { listCategories } from '../../src/mocks/catalog.js'
 
 const code = (c) => (e) => e.code === c
 const names = async () => (await listDemoUsers()).map((u) => u.name)

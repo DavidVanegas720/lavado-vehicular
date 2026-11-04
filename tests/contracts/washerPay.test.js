@@ -1,11 +1,11 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
-import { openShift, getClosePreview, getShiftStatus } from '../../src/services/shifts.js'
-import { createOrder, finishOrder, cancelOrder } from '../../src/services/orders.js'
-import { recordTillPayment, listWasherBalances, getWasherLedger, recordOutsidePayment, recordCorrection } from '../../src/services/washerPay.js'
-import { updateWasher, setWasherActive } from '../../src/services/catalog.js'
-import { getCashFlow } from '../../src/services/cashFlow.js'
+import { openShift, getClosePreview, getShiftStatus } from '../../src/mocks/shifts.js'
+import { createOrder, finishOrder, cancelOrder } from '../../src/mocks/orders.js'
+import { recordTillPayment, listWasherBalances, getWasherLedger, recordOutsidePayment, recordCorrection } from '../../src/mocks/washerPay.js'
+import { updateWasher, setWasherActive } from '../../src/mocks/catalog.js'
+import { getCashFlow } from '../../src/mocks/cashFlow.js'
 
 const code = (c) => (e) => e.code === c
 const KEY = '2026-10-29_unico'

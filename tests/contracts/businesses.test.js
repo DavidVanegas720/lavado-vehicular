@@ -1,11 +1,11 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, getSession, resetMock, setMockNow, listDemoUsers } from '../../src/mocks/session.js'
-import * as svc from '../../src/services/businesses.js'
-import { listCategories } from '../../src/services/catalog.js'
-import { listOperators } from '../../src/services/operators.js'
-import { openShift } from '../../src/services/shifts.js'
-import { createOrder, listShiftOrders } from '../../src/services/orders.js'
+import * as svc from '../../src/mocks/businesses.js'
+import { listCategories } from '../../src/mocks/catalog.js'
+import { listOperators } from '../../src/mocks/operators.js'
+import { openShift } from '../../src/mocks/shifts.js'
+import { createOrder, listShiftOrders } from '../../src/mocks/orders.js'
 
 const code = (c) => (e) => e.code === c
 const NOW = new Date('2026-10-29T15:00:00Z') // Bogota 2026-10-29

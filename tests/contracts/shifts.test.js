@@ -2,8 +2,8 @@ import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, getSession, resetMock, setMockNow } from '../../src/mocks/session.js'
 import shiftsOpenCases from './cases/shiftsOpen.js'
-import { getShiftStatus, openShift, closeShift, reopenShift } from '../../src/services/shifts.js'
-import { createOrder, finishOrder, cancelOrder } from '../../src/services/orders.js'
+import { getShiftStatus, openShift, closeShift, reopenShift } from '../../src/mocks/shifts.js'
+import { createOrder, finishOrder, cancelOrder } from '../../src/mocks/orders.js'
 import { listShiftEvents } from '../../src/mocks/shifts.js'
 
 const DAY1 = new Date('2026-10-29T15:00:00Z') // 10:00 Bogota, shift 2026-10-29_unico, ends 06:00 next day

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
 import {
   getShiftStatus, openShift, closeShift, reopenShift, getClosePreview, listShiftInstances, getShiftInstance,
-} from '../../src/services/shifts.js'
-import { createOrder, finishOrder, cancelOrder } from '../../src/services/orders.js'
+} from '../../src/mocks/shifts.js'
+import { createOrder, finishOrder, cancelOrder } from '../../src/mocks/orders.js'
 
 const code = (c) => (e) => e.code === c
 const KEY = '2026-10-29_B'

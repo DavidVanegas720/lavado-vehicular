@@ -1,10 +1,10 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
-import { openShift, closeShift, getClosePreview, getShiftInstance } from '../../src/services/shifts.js'
-import { createOrder, finishOrder } from '../../src/services/orders.js'
-import { listTillPayables, recordTillPayment } from '../../src/services/washerPay.js'
-import { setWasherActive } from '../../src/services/catalog.js'
+import { openShift, closeShift, getClosePreview, getShiftInstance } from '../../src/mocks/shifts.js'
+import { createOrder, finishOrder } from '../../src/mocks/orders.js'
+import { listTillPayables, recordTillPayment } from '../../src/mocks/washerPay.js'
+import { setWasherActive } from '../../src/mocks/catalog.js'
 
 const code = (c) => (e) => e.code === c
 const KEY = '2026-10-29_B'
