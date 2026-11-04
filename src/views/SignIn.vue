@@ -17,7 +17,10 @@ const password = ref('')
 const busy = ref(false)
 const error = ref('')
 const MESSAGES = {
+  // wrong-password and user-not-found come back when the project's email enumeration protection is off
   'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+  'auth/wrong-password': 'Correo o contraseña incorrectos.',
+  'auth/user-not-found': 'Correo o contraseña incorrectos.',
   'auth/too-many-requests': 'Demasiados intentos. Esperá unos minutos.',
 }
 
