@@ -15,6 +15,7 @@ const selectedId = ref('')
 const error = ref('')
 const success = ref('')
 const days = ref('5')
+const busy = ref(false)
 const blank = () => ({ name: '', motorcycle: true, car: false, fee: '', paidUntil: '', adminName: '' })
 const form = ref(blank())
 
@@ -23,25 +24,26 @@ const overdue = computed(() => pick(data.value.alerts.overdue))
 const expiring = computed(() => pick(data.value.alerts.expiring))
 const isOverdue = (b) => data.value.alerts.overdue.includes(b.id)
 
-function load() {
-  data.value = listBusinesses()
+async function load() {
+  data.value = await listBusinesses()
   days.value = String(data.value.alertWindowDays)
 }
-function run(fn, ok, overrides = { validation: 'Revisá los datos: nombre, al menos un tipo, valor en pesos y fecha.' }) {
+async function run(fn, ok, overrides = { validation: 'Revisá los datos: nombre, al menos un tipo, valor en pesos y fecha.' }) {
   error.value = ''; success.value = ''
-  try { fn(); success.value = ok; return true } catch (e) { error.value = errorText(e, overrides); return false }
+  busy.value = true
+  try { await fn(); success.value = ok; return true } catch (e) { error.value = errorText(e, overrides); return false } finally { busy.value = false }
 }
-function changeDays() {
+async function changeDays() {
   const n = Number(days.value)
-  run(() => { setAlertWindowDays(n); load() }, `Ventana de aviso: ${n} días.`, { validation: 'Escribí un número de días entre 1 y 60.' })
+  await run(async () => { await setAlertWindowDays(n); await load() }, `Ventana de aviso: ${n} días.`, { validation: 'Escribí un número de días entre 1 y 60.' })
 }
-function create() {
+async function create() {
   const f = form.value
   const fee = parsePesos(f.fee)
   const enabledVehicleTypes = [f.motorcycle && 'motorcycle', f.car && 'car'].filter(Boolean)
-  if (run(() => { createBusiness({ name: f.name, enabledVehicleTypes, monthlyFee: fee, paidUntil: f.paidUntil, adminName: f.adminName }); load() }, 'Negocio creado.')) form.value = blank()
+  if (await run(async () => { await createBusiness({ name: f.name, enabledVehicleTypes, monthlyFee: fee, paidUntil: f.paidUntil, adminName: f.adminName }); await load() }, 'Negocio creado.')) form.value = blank()
 }
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 </script>
 
 <template>
@@ -102,6 +104,6 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
     <div><label for="nb-f" class="block font-bold">Mensualidad (pesos)</label><input id="nb-f" v-model="form.fee" type="text" inputmode="numeric" autocomplete="off" :class="input" /></div>
     <div><label for="nb-p" class="block font-bold">Pagado hasta</label><input id="nb-p" v-model="form.paidUntil" type="date" :class="input" /></div>
     <div><label for="nb-a" class="block font-bold">Nombre del administrador</label><input id="nb-a" v-model="form.adminName" type="text" maxlength="60" :class="input" /></div>
-    <button type="submit" :class="btn">Crear negocio</button>
+    <button type="submit" :disabled="busy" :class="btn">Crear negocio</button>
   </form>
 </template>

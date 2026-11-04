@@ -3,8 +3,10 @@ import { ref } from 'vue'
 import * as session from '../services/session.js'
 
 export const useSessionStore = defineStore('session', () => {
-  const user = ref(session.getSession())
-  const signIn = (userId) => { user.value = session.signIn(userId) }
-  const signOut = () => { session.signOut(); user.value = null }
-  return { user, signIn, signOut }
+  const user = ref(null)
+  // Guards await this once so the first navigation sees the restored session.
+  const ready = session.getSession().then((u) => { user.value = u })
+  const signIn = async (userId) => { user.value = await session.signIn(userId) }
+  const signOut = async () => { await session.signOut(); user.value = null }
+  return { user, ready, signIn, signOut }
 })

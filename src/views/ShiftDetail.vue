@@ -21,20 +21,21 @@ const operatorId = ref('')
 const onlyCourtesy = ref(false)
 const actionId = ref('') // order with its form open
 const reason = ref('')
+const busy = ref(false)
 
 const time = (d) => d.toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short', hour12: false })
 const operators = computed(() => [...new Map((data.value?.orders ?? []).map((o) => [o.createdBy, o.createdByName]))])
 const orders = computed(() => (data.value?.orders ?? []).filter((o) => (!operatorId.value || o.createdBy === operatorId.value) && (!onlyCourtesy.value || o.isCourtesy)))
 const snap = computed(() => data.value?.latestClose?.totals)
 
-function load() {
-  try { data.value = getShiftInstance(props.shiftKey) } catch (e) { error.value = errorText(e) }
+async function load() {
+  try { data.value = await getShiftInstance(props.shiftKey) } catch (e) { error.value = errorText(e) }
 }
 onMounted(load)
 
 function open(o) { actionId.value = o.id; reason.value = ''; error.value = ''; success.value = '' }
 
-function submit(o) {
+async function submit(o) {
   const text = reason.value.trim()
   if (!text || text.length > 200) {
     error.value = 'Escribí el motivo (1 a 200 caracteres).'
@@ -43,12 +44,13 @@ function submit(o) {
   }
   error.value = ''
   success.value = ''
+  busy.value = true
   try {
-    cancelOrder(o.id, { reason: text })
+    await cancelOrder(o.id, { reason: text })
     success.value = 'Orden anulada.'
     actionId.value = ''
-  } catch (e) { error.value = errorText(e) }
-  load()
+  } catch (e) { error.value = errorText(e) } finally { busy.value = false }
+  await load()
 }
 </script>
 
@@ -110,7 +112,7 @@ function submit(o) {
               <label :for="`r-${o.id}`" class="block">Motivo</label>
               <input :id="`r-${o.id}`" v-model="reason" type="text" maxlength="200" :class="input" />
             </div>
-            <button type="submit" :class="btn" :aria-label="`Anular orden de ${o.plate}`">Anular</button>
+            <button type="submit" :disabled="busy" :class="btn" :aria-label="`Anular orden de ${o.plate}`">Anular</button>
           </form>
         </li>
       </ul>

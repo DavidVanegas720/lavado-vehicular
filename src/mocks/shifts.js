@@ -12,7 +12,7 @@ const pesos = (n) => Number.isInteger(n) && n >= 0
 /** Shift state of one instance of a business. Used by orders.js too. */
 export const stateOf = (db, businessId, shiftKey) => shiftState(events(db, businessId), shiftKey)
 
-export function getShiftStatus() {
+export async function getShiftStatus() {
   const { business, db } = authorize(['admin', 'operator'])
   const cur = shiftOf(now(), business.shifts)
   const evs = events(db, business.id)
@@ -33,7 +33,7 @@ export function getShiftStatus() {
   })
 }
 
-export function openShift(input) {
+export async function openShift(input) {
   const { user, business, db } = authorize(OPERATOR)
   if (!pesos(input?.openingCash)) throw coded('validation')
   const cur = shiftOf(now(), business.shifts)
@@ -44,7 +44,7 @@ export function openShift(input) {
   })
 }
 
-export function closeShift(shiftKey, input) {
+export async function closeShift(shiftKey, input) {
   const { user, business, db } = authorize(OPERATOR)
   if (!pesos(input?.countedCash)) throw coded('validation')
   const evs = events(db, business.id)
@@ -63,7 +63,7 @@ export function closeShift(shiftKey, input) {
 }
 
 /** Blind preview (no expected cash, D3.6) of an open instance. */
-export function getClosePreview(shiftKey) {
+export async function getClosePreview(shiftKey) {
   const { business, db } = authorize(OPERATOR)
   const evs = events(db, business.id)
   const opened = evs.findLast((e) => e.shiftKey === shiftKey && e.type === 'open')
@@ -79,7 +79,7 @@ export function getClosePreview(shiftKey) {
 }
 
 /** Admin: every instance that has events, newest first. lateMs = time past endsAt while not closed. */
-export function listShiftInstances() {
+export async function listShiftInstances() {
   const { business, db } = authorize(ADMIN)
   const evs = events(db, business.id)
   const opens = [...new Map(evs.filter((e) => e.type === 'open').map((e) => [e.shiftKey, e])).values()]
@@ -93,7 +93,7 @@ export function listShiftInstances() {
   return structuredClone(list.reverse().sort((a, b) => b.endsAt - a.endsAt))
 }
 
-export function getShiftInstance(shiftKey) {
+export async function getShiftInstance(shiftKey) {
   const { business, db } = authorize(ADMIN)
   const name = (id) => db.users.find((u) => u.id === id)?.name ?? id
   const evs = events(db, business.id).filter((e) => e.shiftKey === shiftKey)
@@ -107,7 +107,7 @@ export function getShiftInstance(shiftKey) {
   })
 }
 
-export function reopenShift(shiftKey, input) {
+export async function reopenShift(shiftKey, input) {
   const { user, business, db } = authorize(OPERATOR)
   const reason = typeof input?.reason === 'string' ? input.reason.trim() : ''
   if (reason.length < 1 || reason.length > 200) throw coded('validation')
@@ -116,7 +116,7 @@ export function reopenShift(shiftKey, input) {
 }
 
 /** Test helper: the business's shift events. */
-export const listShiftEvents = () => {
+export const listShiftEvents = async () => {
   const { business, db } = authorize(['admin', 'operator'])
   return structuredClone(events(db, business.id))
 }

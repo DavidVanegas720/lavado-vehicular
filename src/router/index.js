@@ -36,12 +36,14 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
-  const { user } = useSessionStore()
+router.beforeEach(async (to) => {
+  const store = useSessionStore()
+  await store.ready
+  const { user } = store
   if (!user) return to.path === '/sign-in' ? true : '/sign-in'
   // Read the service on every navigation (no cache) so unblocking restores access.
-  if (to.path === '/suspended') return getSession()?.businessBlocked ? true : homeOf(user.role)
-  if (getSession()?.businessBlocked) return to.path === '/sign-in' ? true : '/suspended'
+  if (to.path === '/suspended') return (await getSession())?.businessBlocked ? true : homeOf(user.role)
+  if ((await getSession())?.businessBlocked) return to.path === '/sign-in' ? true : '/suspended'
   const home = homeOf(user.role)
   return NAV[user.role].some((e) => e.path === to.path) ? true : home
 })

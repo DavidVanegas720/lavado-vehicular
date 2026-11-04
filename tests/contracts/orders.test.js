@@ -9,15 +9,15 @@ const DAY1 = new Date('2026-10-29T15:00:00Z')
 const wash = { plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' }
 const code = (c) => (e) => e.code === c
 
-beforeEach(() => {
+beforeEach(async () => {
   resetMock()
   setMockNow(DAY1)
-  signIn('carlos')
-  openShift({ openingCash: 50000 })
+  await signIn('carlos')
+  await openShift({ openingCash: 50000 })
 })
 
-test('150 cc example: Full 25.000, Pedro 40% -> commission 10.000, frozen names, shift stamps', () => {
-  const o = createOrder(wash)
+test('150 cc example: Full 25.000, Pedro 40% -> commission 10.000, frozen names, shift stamps', async () => {
+  const o = await createOrder(wash)
   assert.equal(o.status, 'in_progress')
   assert.equal(o.categoryName, 'De 126 a 200 cc')
   assert.equal(o.listPrice, 25000)
@@ -30,132 +30,132 @@ test('150 cc example: Full 25.000, Pedro 40% -> commission 10.000, frozen names,
   assert.equal(o.month, '2026-10')
 })
 
-test('Pedro 40% -> 50% affects only later orders', () => {
-  const first = createOrder(wash)
-  signIn('ana')
-  setWasherCommissionBp('pedro', 5000)
-  assert.throws(() => setWasherCommissionBp('pedro', 10001), code('validation'))
-  assert.equal(listWashers().find((w) => w.id === 'pedro').commissionBp, 5000)
-  signIn('carlos')
-  const second = createOrder({ ...wash, plate: 'XYZ98' })
+test('Pedro 40% -> 50% affects only later orders', async () => {
+  const first = await createOrder(wash)
+  await signIn('ana')
+  await setWasherCommissionBp('pedro', 5000)
+  await assert.rejects(async () => setWasherCommissionBp('pedro', 10001), code('validation'))
+  assert.equal((await listWashers()).find((w) => w.id === 'pedro').commissionBp, 5000)
+  await signIn('carlos')
+  const second = await createOrder({ ...wash, plate: 'XYZ98' })
   assert.equal(second.commissionAmount, 12500)
   assert.equal(second.commissionBp, 5000)
-  const old = listShiftOrders().find((o) => o.id === first.id)
+  const old = (await listShiftOrders()).find((o) => o.id === first.id)
   assert.equal(old.commissionAmount, 10000)
   assert.equal(old.commissionBp, 4000)
-  assert.throws(() => setWasherCommissionBp('pedro', 3000), code('forbidden'))
+  await assert.rejects(async () => setWasherCommissionBp('pedro', 3000), code('forbidden'))
 })
 
-test('courtesy: reason required (1-200); finalPrice 0, commission kept', () => {
-  assert.throws(() => createOrder({ ...wash, isCourtesy: true }), code('validation'))
-  assert.throws(() => createOrder({ ...wash, isCourtesy: true, courtesyReason: 'x'.repeat(201) }), code('validation'))
-  const ok = createOrder({ ...wash, isCourtesy: true, courtesyReason: 'x'.repeat(200) })
+test('courtesy: reason required (1-200); finalPrice 0, commission kept', async () => {
+  await assert.rejects(async () => createOrder({ ...wash, isCourtesy: true }), code('validation'))
+  await assert.rejects(async () => createOrder({ ...wash, isCourtesy: true, courtesyReason: 'x'.repeat(201) }), code('validation'))
+  const ok = await createOrder({ ...wash, isCourtesy: true, courtesyReason: 'x'.repeat(200) })
   assert.equal(ok.finalPrice, 0)
   assert.equal(ok.commissionAmount, 10000)
-  assert.equal(createOrder({ ...wash, plate: 'XYZ98', isCourtesy: true, courtesyReason: ' frecuente ' }).courtesyReason, 'frecuente')
+  assert.equal((await createOrder({ ...wash, plate: 'XYZ98', isCourtesy: true, courtesyReason: ' frecuente ' })).courtesyReason, 'frecuente')
 })
 
-test('plates and cc: special plate only with flag; cc without category rejected', () => {
-  assert.throws(() => createOrder({ ...wash, plate: 'CD1234' }), code('validation'))
-  assert.equal(createOrder({ ...wash, plate: 'CD1234', plateSpecial: true }).plateSpecial, true)
-  assert.equal(createOrder({ ...wash, plate: 'ABC12' }).plate, 'ABC12')
-  assert.throws(() => createOrder({ ...wash, plate: 'ABC123' }), code('validation'))
-  assert.throws(() => createOrder({ ...wash, cc: 5000 }), code('validation'))
-  assert.throws(() => createOrder({ ...wash, washerId: 'nope' }), code('not_found'))
+test('plates and cc: special plate only with flag; cc without category rejected', async () => {
+  await assert.rejects(async () => createOrder({ ...wash, plate: 'CD1234' }), code('validation'))
+  assert.equal((await createOrder({ ...wash, plate: 'CD1234', plateSpecial: true })).plateSpecial, true)
+  assert.equal((await createOrder({ ...wash, plate: 'ABC12' })).plate, 'ABC12')
+  await assert.rejects(async () => createOrder({ ...wash, plate: 'ABC123' }), code('validation'))
+  await assert.rejects(async () => createOrder({ ...wash, cc: 5000 }), code('validation'))
+  await assert.rejects(async () => createOrder({ ...wash, washerId: 'nope' }), code('not_found'))
 })
 
-test('finish sets done and payment; second finish and bad payment fail', () => {
-  const o = createOrder(wash)
-  assert.throws(() => finishOrder(o.id, { paymentMethod: 'card' }), code('validation'))
-  const done = finishOrder(o.id, { paymentMethod: 'qr' })
+test('finish sets done and payment; second finish and bad payment fail', async () => {
+  const o = await createOrder(wash)
+  await assert.rejects(async () => finishOrder(o.id, { paymentMethod: 'card' }), code('validation'))
+  const done = await finishOrder(o.id, { paymentMethod: 'qr' })
   assert.equal(done.status, 'done')
   assert.equal(done.paymentMethod, 'qr')
   assert.equal(done.doneBy, 'carlos')
-  assert.throws(() => finishOrder(o.id, { paymentMethod: 'cash' }), code('invalid_state'))
+  await assert.rejects(async () => finishOrder(o.id, { paymentMethod: 'cash' }), code('invalid_state'))
 })
 
-test('cancel before the wash: reason required; a done order is final', () => {
-  const a = createOrder(wash)
-  assert.throws(() => cancelOrder(a.id, { reason: '' }), code('validation'))
-  const c = cancelOrder(a.id, { reason: 'cliente se fue' })
+test('cancel before the wash: reason required; a done order is final', async () => {
+  const a = await createOrder(wash)
+  await assert.rejects(async () => cancelOrder(a.id, { reason: '' }), code('validation'))
+  const c = await cancelOrder(a.id, { reason: 'cliente se fue' })
   assert.equal(c.status, 'cancelled')
   assert.equal('isRefund' in c, false)
   assert.equal('commissionPaid' in c, false)
-  assert.throws(() => cancelOrder(a.id, { reason: 'otra vez' }), code('invalid_state'))
-  const b = createOrder({ ...wash, plate: 'XYZ98' })
-  finishOrder(b.id, { paymentMethod: 'cash' })
-  assert.throws(() => cancelOrder(b.id, { reason: 'x' }), code('invalid_state'))
+  await assert.rejects(async () => cancelOrder(a.id, { reason: 'otra vez' }), code('invalid_state'))
+  const b = await createOrder({ ...wash, plate: 'XYZ98' })
+  await finishOrder(b.id, { paymentMethod: 'cash' })
+  await assert.rejects(async () => cancelOrder(b.id, { reason: 'x' }), code('invalid_state'))
 })
 
-test('admin cannot cancel a done order', () => {
-  const a = createOrder(wash)
-  const b = createOrder({ ...wash, plate: 'XYZ98' })
-  finishOrder(a.id, { paymentMethod: 'cash' })
-  finishOrder(b.id, { paymentMethod: 'qr' })
-  signIn('ana')
-  assert.throws(() => cancelOrder(a.id, { reason: 'mal lavado' }), code('invalid_state'))
-  assert.throws(() => cancelOrder(b.id, { reason: 'mal lavado' }), code('invalid_state'))
-  signIn('carlos')
-  const st = Object.fromEntries(listShiftOrders().map((o) => [o.id, o.status]))
+test('admin cannot cancel a done order', async () => {
+  const a = await createOrder(wash)
+  const b = await createOrder({ ...wash, plate: 'XYZ98' })
+  await finishOrder(a.id, { paymentMethod: 'cash' })
+  await finishOrder(b.id, { paymentMethod: 'qr' })
+  await signIn('ana')
+  await assert.rejects(async () => cancelOrder(a.id, { reason: 'mal lavado' }), code('invalid_state'))
+  await assert.rejects(async () => cancelOrder(b.id, { reason: 'mal lavado' }), code('invalid_state'))
+  await signIn('carlos')
+  const st = Object.fromEntries((await listShiftOrders()).map((o) => [o.id, o.status]))
   assert.deepEqual([st[a.id], st[b.id]], ['done', 'done'])
 })
 
-test('another operator cannot finish or cancel an order they did not create', () => {
-  const o = createOrder(wash)
-  signIn('laura')
-  assert.throws(() => finishOrder(o.id, { paymentMethod: 'cash' }), code('forbidden'))
-  assert.throws(() => cancelOrder(o.id, { reason: 'x' }), code('forbidden'))
+test('another operator cannot finish or cancel an order they did not create', async () => {
+  const o = await createOrder(wash)
+  await signIn('laura')
+  await assert.rejects(async () => finishOrder(o.id, { paymentMethod: 'cash' }), code('forbidden'))
+  await assert.rejects(async () => cancelOrder(o.id, { reason: 'x' }), code('forbidden'))
 })
 
-test('listShiftOrders: own orders only, newest first; admin forbidden', () => {
-  const a = createOrder(wash)
-  const b = createOrder({ ...wash, plate: 'XYZ98' })
-  signIn('laura')
-  const l = createOrder({ ...wash, plate: 'LAU12' })
-  assert.deepEqual(listShiftOrders().map((o) => o.id), [l.id])
-  signIn('carlos')
-  assert.deepEqual(listShiftOrders().map((o) => o.id), [b.id, a.id])
-  signIn('ana')
-  assert.throws(() => listShiftOrders(), code('forbidden'))
-  assert.throws(() => createOrder(wash), code('forbidden'))
-  signIn('david')
-  assert.throws(() => listShiftOrders(), code('forbidden'))
+test('listShiftOrders: own orders only, newest first; admin forbidden', async () => {
+  const a = await createOrder(wash)
+  const b = await createOrder({ ...wash, plate: 'XYZ98' })
+  await signIn('laura')
+  const l = await createOrder({ ...wash, plate: 'LAU12' })
+  assert.deepEqual((await listShiftOrders()).map((o) => o.id), [l.id])
+  await signIn('carlos')
+  assert.deepEqual((await listShiftOrders()).map((o) => o.id), [b.id, a.id])
+  await signIn('ana')
+  await assert.rejects(async () => listShiftOrders(), code('forbidden'))
+  await assert.rejects(async () => createOrder(wash), code('forbidden'))
+  await signIn('david')
+  await assert.rejects(async () => listShiftOrders(), code('forbidden'))
 })
 
-test('previous shift: own in_progress order still listed, own done one is not', () => {
-  const stuck = createOrder(wash)
-  const paid = createOrder({ ...wash, plate: 'XYZ98' })
-  finishOrder(paid.id, { paymentMethod: 'cash' })
+test('previous shift: own in_progress order still listed, own done one is not', async () => {
+  const stuck = await createOrder(wash)
+  const paid = await createOrder({ ...wash, plate: 'XYZ98' })
+  await finishOrder(paid.id, { paymentMethod: 'cash' })
   setMockNow(new Date('2026-10-30T15:00:00Z'))
-  assert.equal(getShiftStatus().unclosed.length, 1)
-  assert.deepEqual(listShiftOrders().map((o) => o.id), [stuck.id])
-  finishOrder(stuck.id, { paymentMethod: 'qr' }) // still possible after endsAt
-  assert.equal(listShiftOrders().length, 0)
+  assert.equal((await getShiftStatus()).unclosed.length, 1)
+  assert.deepEqual((await listShiftOrders()).map((o) => o.id), [stuck.id])
+  await finishOrder(stuck.id, { paymentMethod: 'qr' }) // still possible after endsAt
+  assert.equal((await listShiftOrders()).length, 0)
 })
 
-test('tenant isolation: Beto gets not_found on Medallo orders and sees Prueba catalog', () => {
-  const o = createOrder(wash)
-  signIn('beto')
-  assert.throws(() => finishOrder(o.id, { paymentMethod: 'cash' }), code('not_found'))
-  assert.throws(() => cancelOrder(o.id, { reason: 'x' }), code('not_found'))
-  assert.deepEqual(listShiftOrders(), [])
-  assert.equal(listCategories()[0].id, 'p-todas')
-  assert.throws(() => createOrder(wash), code('not_found')) // Medallo ids do not exist in his catalog
+test('tenant isolation: Beto gets not_found on Medallo orders and sees Prueba catalog', async () => {
+  const o = await createOrder(wash)
+  await signIn('beto')
+  await assert.rejects(async () => finishOrder(o.id, { paymentMethod: 'cash' }), code('not_found'))
+  await assert.rejects(async () => cancelOrder(o.id, { reason: 'x' }), code('not_found'))
+  assert.deepEqual(await listShiftOrders(), [])
+  assert.equal((await listCategories())[0].id, 'p-todas')
+  await assert.rejects(async () => createOrder(wash), code('not_found')) // Medallo ids do not exist in his catalog
 })
 
-test('blocked business: business_blocked on every function', () => {
-  signIn('bloqueado')
+test('blocked business: business_blocked on every function', async () => {
+  await signIn('bloqueado')
   const calls = [
     () => getShiftStatus(), () => openShift({ openingCash: 0 }), () => closeShift('k', { countedCash: 0 }),
     () => reopenShift('k', { reason: 'x' }), () => createOrder(wash), () => finishOrder('o1', {}),
     () => cancelOrder('o1', {}), () => listShiftOrders(), () => listCategories(), () => listWashers(),
   ]
-  for (const call of calls) assert.throws(call, code('business_blocked'))
+  for (const call of calls) await assert.rejects(call, code('business_blocked'))
 })
 
-test('signed out -> unauthenticated', () => {
-  signOut()
-  assert.throws(() => listShiftOrders(), code('unauthenticated'))
-  assert.throws(() => createOrder(wash), code('unauthenticated'))
-  assert.throws(() => signIn('nadie'), code('not_found'))
+test('signed out -> unauthenticated', async () => {
+  await signOut()
+  await assert.rejects(async () => listShiftOrders(), code('unauthenticated'))
+  await assert.rejects(async () => createOrder(wash), code('unauthenticated'))
+  await assert.rejects(async () => signIn('nadie'), code('not_found'))
 })

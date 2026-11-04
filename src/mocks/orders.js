@@ -8,7 +8,7 @@ import { buildOrder, finishFields, cancelFields } from '../domain/order.js'
 const OPERATOR = ['operator']
 const ACTORS = ['admin', 'operator']
 
-export function createOrder(input) {
+export async function createOrder(input) {
   const { user, business, db } = authorize(OPERATOR)
   if (!business.enabledVehicleTypes.includes(input?.vehicleType ?? 'motorcycle')) throw coded('forbidden')
   const order = buildOrder(input ?? {}, activeSnapshot(db.catalogs[business.id]), user, now(), business.shifts)
@@ -32,10 +32,10 @@ function transition(orderId, input, fieldsFn) {
   return structuredClone(order)
 }
 
-export const finishOrder = (orderId, input) => transition(orderId, input, finishFields)
-export const cancelOrder = (orderId, input) => transition(orderId, input, cancelFields)
+export const finishOrder = async (orderId, input) => transition(orderId, input, finishFields)
+export const cancelOrder = async (orderId, input) => transition(orderId, input, cancelFields)
 
-export function listShiftOrders() {
+export async function listShiftOrders() {
   const { user, business, db } = authorize(OPERATOR)
   const key = shiftOf(now(), business.shifts).shiftKey
   const mine = db.orders.filter((o) => o.businessId === business.id && o.createdBy === user.uid)

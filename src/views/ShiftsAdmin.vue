@@ -14,8 +14,8 @@ const error = ref('')
 const late = computed(() => instances.value.filter((i) => i.lateMs > 0))
 const hours = (ms) => Math.floor(ms / 3600000)
 
-onMounted(() => {
-  try { instances.value = listShiftInstances() } catch (e) { error.value = errorText(e) }
+onMounted(async () => {
+  try { instances.value = await listShiftInstances() } catch (e) { error.value = errorText(e) }
 })
 </script>
 

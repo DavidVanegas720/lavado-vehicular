@@ -12,12 +12,12 @@ const own = (db, business, id) =>
   db.users.find((u) => u.id === id && u.role === 'operator' && u.businessId === business.id) ??
   (() => { throw coded('not_found') })()
 
-export function listOperators() {
+export async function listOperators() {
   const { business, db } = authorize(ADMIN)
   return db.users.filter((u) => u.role === 'operator' && u.businessId === business.id).map(view)
 }
 
-export function createOperator({ name } = {}) {
+export async function createOperator({ name } = {}) {
   const { business, db } = authorize(ADMIN)
   const user = { id: `u${db.nextId}`, name: clean(name), role: 'operator', businessId: business.id, active: true }
   db.users.push(user)
@@ -25,14 +25,14 @@ export function createOperator({ name } = {}) {
   return view(user)
 }
 
-export function renameOperator(id, name) {
+export async function renameOperator(id, name) {
   const { business, db } = authorize(ADMIN)
   const user = own(db, business, id)
   user.name = clean(name)
   return view(user)
 }
 
-export function setOperatorActive(id, active) {
+export async function setOperatorActive(id, active) {
   const { business, db } = authorize(ADMIN)
   const user = own(db, business, id)
   if (typeof active !== 'boolean') throw coded('validation')

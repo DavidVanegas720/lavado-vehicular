@@ -1,4 +1,5 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listDemoUsers } from '../services/session.js'
 import { useSessionStore } from '../stores/session.js'
@@ -6,11 +7,12 @@ import { homeOf } from '../router/nav.js'
 
 const store = useSessionStore()
 const router = useRouter()
-const users = listDemoUsers()
+const users = ref([])
+onMounted(async () => { users.value = await listDemoUsers() })
 const ROLE_LABEL = { operator: 'Operador', admin: 'Administrador', superadmin: 'Superadmin' }
 
-function enter(id) {
-  store.signIn(id)
+async function enter(id) {
+  await store.signIn(id)
   router.push(homeOf(store.user.role))
 }
 </script>

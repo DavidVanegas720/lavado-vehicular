@@ -31,15 +31,16 @@ const courtesy = ref(false)
 const reason = ref('')
 const error = ref('')
 const success = ref('')
+const busy = ref(false)
 
 const fail = (e) => { error.value = errorText(e, { not_found: 'El catálogo cambió. Revisá la selección.' }) }
 
-function load() {
-  status.value = getShiftStatus()
-  types.value = getSession()?.enabledVehicleTypes ?? ['motorcycle']
+async function load() {
+  status.value = await getShiftStatus()
+  types.value = (await getSession())?.enabledVehicleTypes ?? ['motorcycle']
   if (!types.value.includes(vehicleType.value)) vehicleType.value = types.value[0]
   cat.value = {
-    categories: listCategories(), washTypes: listWashTypes(), washers: listWashers(), prices: listPrices(),
+    categories: await listCategories(), washTypes: await listWashTypes(), washers: await listWashers(), prices: await listPrices(),
   }
   // clear selections that no longer exist after a catalog reload
   const has = (list, id) => list.some((x) => x.id === id)
@@ -47,7 +48,7 @@ function load() {
   if (!has(cat.value.washTypes, washTypeId.value)) washTypeId.value = ''
   if (!has(cat.value.washers, washerId.value)) washerId.value = ''
 }
-onMounted(() => { try { load() } catch (e) { fail(e) } })
+onMounted(async () => { try { await load() } catch (e) { fail(e) } })
 
 const cats = computed(() => cat.value.categories.filter((c) => c.vehicleType === vehicleType.value))
 const washTypes = computed(() => cat.value.washTypes.filter((t) => t.vehicleType === vehicleType.value))
@@ -62,15 +63,16 @@ const listPrice = computed(() => priceOf(washTypeId.value))
 const washer = computed(() => cat.value.washers.find((w) => w.id === washerId.value))
 const noPrice = computed(() => categoryId.value && washTypeId.value && listPrice.value === undefined)
 
-function open() {
+async function open() {
   error.value = ''
   const openingCash = parsePesos(baseText.value)
   if (openingCash === null) { error.value = 'Escribí la base en pesos, sin decimales.'; return }
-  try { openShift({ openingCash }) } catch (e) { error.value = errorText(e, { invalid_state: 'El turno ya lo abrió otro operador.' }) }
-  try { load() } catch (e) { fail(e) }
+  busy.value = true
+  try { await openShift({ openingCash }) } catch (e) { error.value = errorText(e, { invalid_state: 'El turno ya lo abrió otro operador.' }) } finally { busy.value = false }
+  try { await load() } catch (e) { fail(e) }
 }
 
-function save() {
+async function save() {
   error.value = ''
   success.value = ''
   const p = parsePlate(plate.value, vehicleType.value, special.value)
@@ -84,8 +86,9 @@ function save() {
     error.value = 'Escribí el motivo de la cortesía.'
     return
   }
+  busy.value = true
   try {
-    const o = createOrder({
+    const o = await createOrder({
       plate: plate.value, plateSpecial: special.value, vehicleType: vehicleType.value, cc: isCar.value ? undefined : cc.value, categoryId: categoryId.value,
       washTypeId: washTypeId.value, washerId: washerId.value, isCourtesy: courtesy.value,
       courtesyReason: courtesy.value ? reason.value : undefined,
@@ -94,8 +97,8 @@ function save() {
     plate.value = ''; special.value = false; ccText.value = ''; courtesy.value = false; reason.value = ''
   } catch (e) {
     fail(e)
-    if (e.code === 'not_found' || e.code === 'shift_not_open') load()
-  }
+    if (e.code === 'not_found' || e.code === 'shift_not_open') await load()
+  } finally { busy.value = false }
 }
 </script>
 
@@ -114,7 +117,7 @@ function save() {
       <label for="base" class="block">Base de caja</label>
       <input id="base" v-model="baseText" type="text" inputmode="numeric" autocomplete="off" :class="input" />
     </div>
-    <button type="submit" :class="btn">Abrir turno</button>
+    <button type="submit" :disabled="busy" :class="btn">Abrir turno</button>
   </form>
 
   <form v-else-if="status" class="space-y-4" @submit.prevent="save">
@@ -165,6 +168,6 @@ function save() {
         <input id="reason" v-model="reason" type="text" maxlength="200" :class="input" />
       </template>
     </div>
-    <button type="submit" :disabled="!!noPrice" :class="btn">Guardar</button>
+    <button type="submit" :disabled="!!noPrice || busy" :class="btn">Guardar</button>
   </form>
 </template>

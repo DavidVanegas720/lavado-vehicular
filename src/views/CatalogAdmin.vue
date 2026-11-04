@@ -26,6 +26,7 @@ const newCat = reactive({ vehicleType: 'motorcycle', name: '', minCc: '', maxCc:
 const newType = reactive({ vehicleType: 'motorcycle', name: '', prices: {} })
 const editCat = ref(null) // { id, name, minCc, maxCc }
 const editType = ref(null) // { id, name }
+const busy = ref(false)
 
 const key = (c, t) => `${c}|${t}`
 const priceOf = (c, t) => prices.value.find((p) => p.categoryId === c && p.washTypeId === t)?.price
@@ -33,13 +34,13 @@ const state = (x, wt) => (x.active ? (wt ? 'Activo' : 'Activa') : (wt ? 'Inactiv
 const msgs = { validation: 'Revisá los datos: nombre de 1 a 60 letras y, en motos, cilindraje mínimo menor o igual al máximo.' }
 const intOrNaN = (t) => (/^\d+$/.test(t.trim()) ? Number(t) : NaN)
 
-function load() {
-  const enabled = getSession()?.enabledVehicleTypes ?? ['motorcycle']
+async function load() {
+  const enabled = (await getSession())?.enabledVehicleTypes ?? ['motorcycle']
   both.value = enabled.length > 1
   for (const x of [newCat, newType]) if (!enabled.includes(x.vehicleType)) x.vehicleType = enabled[0]
-  cats.value = listCategories()
-  types.value = listWashTypes()
-  prices.value = listPrices()
+  cats.value = await listCategories()
+  types.value = await listWashTypes()
+  prices.value = await listPrices()
   for (const c of cats.value) for (const t of types.value) {
     const p = priceOf(c.id, t.id)
     priceText[key(c.id, t.id)] ??= p === undefined ? '' : formatCOP(p)
@@ -47,14 +48,15 @@ function load() {
 }
 
 // Runs an action: clears messages, reloads on success, shows errorText on failure. Returns true on success.
-function run(fn, ok) {
+async function run(fn, ok) {
   error.value = ''
   success.value = ''
-  try { fn(); load(); success.value = ok; return true } catch (e) {
+  busy.value = true
+  try { await fn(); await load(); success.value = ok; return true } catch (e) {
     error.value = errorText(e, msgs)
-    if (e.code === 'not_found') try { load() } catch { /* shown above */ }
+    if (e.code === 'not_found') try { await load() } catch { /* shown above */ }
     return false
-  }
+  } finally { busy.value = false }
 }
 
 // Every price field must parse; blank or invalid -> message, nothing sent.
@@ -68,7 +70,7 @@ function parsePrices(map, others) {
   return out
 }
 
-function addCategory() {
+async function addCategory() {
   error.value = ''
   success.value = ''
   const car = newCat.vehicleType === 'car'
@@ -77,43 +79,43 @@ function addCategory() {
   if (!car && (Number.isNaN(minCc) || Number.isNaN(maxCc))) { error.value = 'Escribí el cilindraje mínimo y máximo en números.'; return }
   const p = parsePrices(newCat.prices, types.value.filter((t) => t.active && t.vehicleType === newCat.vehicleType))
   if (!p) return
-  if (run(() => createCategory({ vehicleType: newCat.vehicleType, name: newCat.name, ...(car ? {} : { minCc, maxCc }), prices: p }), 'Categoría creada.')) {
+  if (await run(() => createCategory({ vehicleType: newCat.vehicleType, name: newCat.name, ...(car ? {} : { minCc, maxCc }), prices: p }), 'Categoría creada.')) {
     Object.assign(newCat, { name: '', minCc: '', maxCc: '', prices: {} })
   }
 }
 
-function saveCategory() {
+async function saveCategory() {
   error.value = ''
   success.value = ''
   const e = editCat.value
   const minCc = intOrNaN(e.minCc)
   const maxCc = intOrNaN(e.maxCc)
   if (e.vehicleType !== 'car' && (Number.isNaN(minCc) || Number.isNaN(maxCc))) { error.value = 'Escribí el cilindraje mínimo y máximo en números.'; return }
-  if (run(() => updateCategory(e.id, { name: e.name, minCc, maxCc }), 'Categoría guardada.')) editCat.value = null
+  if (await run(() => updateCategory(e.id, { name: e.name, minCc, maxCc }), 'Categoría guardada.')) editCat.value = null
 }
 
-function addType() {
+async function addType() {
   error.value = ''
   success.value = ''
   const p = parsePrices(newType.prices, cats.value.filter((c) => c.active && c.vehicleType === newType.vehicleType))
   if (!p) return
-  if (run(() => createWashType({ vehicleType: newType.vehicleType, name: newType.name, prices: p }), 'Tipo de lavado creado.')) {
+  if (await run(() => createWashType({ vehicleType: newType.vehicleType, name: newType.name, prices: p }), 'Tipo de lavado creado.')) {
     Object.assign(newType, { name: '', prices: {} })
   }
 }
 
-function saveType() {
+async function saveType() {
   const e = editType.value
-  if (run(() => updateWashType(e.id, { name: e.name }), 'Tipo de lavado guardado.')) editType.value = null
+  if (await run(() => updateWashType(e.id, { name: e.name }), 'Tipo de lavado guardado.')) editType.value = null
 }
 
-function savePrice(c, t) {
+async function savePrice(c, t) {
   const v = parsePesos(priceText[key(c.id, t.id)])
   if (!v) { success.value = ''; error.value = `Escribí el precio de ${t.name} en pesos, sin decimales.`; return }
-  if (run(() => setPrice(c.id, t.id, v), `Precio guardado: ${c.name}, ${t.name}, ${formatCOP(v)}.`)) priceText[key(c.id, t.id)] = formatCOP(v)
+  if (await run(() => setPrice(c.id, t.id, v), `Precio guardado: ${c.name}, ${t.name}, ${formatCOP(v)}.`)) priceText[key(c.id, t.id)] = formatCOP(v)
 }
 
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 </script>
 
 <template>
@@ -136,7 +138,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
             <input :id="`ec-b-${c.id}`" v-model="editCat.maxCc" type="text" inputmode="numeric" autocomplete="off" :class="input" />
           </template>
           <div class="flex flex-wrap gap-2">
-            <button type="submit" :class="btn">Guardar</button>
+            <button type="submit" :disabled="busy" :class="btn">Guardar</button>
             <button type="button" :class="btn2" @click="editCat = null">Cancelar</button>
           </div>
         </form>
@@ -173,7 +175,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
         <label :for="`nc-p-${t.id}`" class="block">Precio de {{ t.name }}</label>
         <input :id="`nc-p-${t.id}`" v-model="newCat.prices[t.id]" type="text" inputmode="numeric" autocomplete="off" :class="input" />
       </template>
-      <button type="submit" :class="btn">Crear categoría</button>
+      <button type="submit" :disabled="busy" :class="btn">Crear categoría</button>
     </form>
   </section>
 
@@ -185,7 +187,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
           <label :for="`et-n-${t.id}`" class="block">Nombre</label>
           <input :id="`et-n-${t.id}`" v-model="editType.name" type="text" maxlength="60" :class="input" />
           <div class="flex flex-wrap gap-2">
-            <button type="submit" :class="btn">Guardar</button>
+            <button type="submit" :disabled="busy" :class="btn">Guardar</button>
             <button type="button" :class="btn2" @click="editType = null">Cancelar</button>
           </div>
         </form>
@@ -214,7 +216,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
         <label :for="`nt-p-${c.id}`" class="block">Precio en {{ c.name }}</label>
         <input :id="`nt-p-${c.id}`" v-model="newType.prices[c.id]" type="text" inputmode="numeric" autocomplete="off" :class="input" />
       </template>
-      <button type="submit" :class="btn">Crear tipo de lavado</button>
+      <button type="submit" :disabled="busy" :class="btn">Crear tipo de lavado</button>
     </form>
   </section>
 

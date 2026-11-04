@@ -26,10 +26,10 @@ const publicUser = (u) => ({
 })
 
 /** Active users for the demo sign-in screen. */
-export const listDemoUsers = () => db.users.filter((u) => u.active).map(publicUser)
+export const listDemoUsers = async () => db.users.filter((u) => u.active).map(publicUser)
 
 /** Demo sign-in by seed user id, no password (Firebase Auth arrives in P8). */
-export function signIn(userId) {
+export async function signIn(userId) {
   const user = db.users.find((u) => u.id === userId)
   if (!user) throw coded('not_found')
   if (!user.active) throw coded('forbidden')
@@ -37,9 +37,9 @@ export function signIn(userId) {
   return publicUser(user)
 }
 
-export const signOut = () => { uid = null }
+export const signOut = async () => { uid = null }
 
-export function getSession() {
+export async function getSession() {
   const user = db.users.find((u) => u.id === uid)
   return user ? publicUser(user) : null
 }

@@ -25,7 +25,7 @@ const types = (v) => {
 const find = (db, id) => db.businesses.find((b) => b.id === id) ?? (() => { throw coded('not_found') })()
 const out = (b) => structuredClone(b)
 
-export function listBusinesses() {
+export async function listBusinesses() {
   const { db } = authorize(SUPER)
   const alerts = billingAlerts(db.businesses, bogotaDate(now()), db.platform.alertWindowDays)
   return {
@@ -35,7 +35,7 @@ export function listBusinesses() {
   }
 }
 
-export function createBusiness({ name, enabledVehicleTypes, monthlyFee, paidUntil, adminName } = {}) {
+export async function createBusiness({ name, enabledVehicleTypes, monthlyFee, paidUntil, adminName } = {}) {
   const { db } = authorize(SUPER)
   const business = {
     id: `b${db.nextId}`, name: text(name, 60), enabledVehicleTypes: types(enabledVehicleTypes),
@@ -52,7 +52,7 @@ export function createBusiness({ name, enabledVehicleTypes, monthlyFee, paidUnti
   return out(business)
 }
 
-export function updateBusiness(id, { name, enabledVehicleTypes, monthlyFee, shifts } = {}) {
+export async function updateBusiness(id, { name, enabledVehicleTypes, monthlyFee, shifts } = {}) {
   const { db } = authorize(SUPER)
   const business = find(db, id)
   const n = text(name, 60), t = types(enabledVehicleTypes), fee = money(monthlyFee, 0)
@@ -67,7 +67,7 @@ export function updateBusiness(id, { name, enabledVehicleTypes, monthlyFee, shif
   return out(business)
 }
 
-export function recordBillingPayment(id, { amount, periodMonth, method, note, paidUntil } = {}) {
+export async function recordBillingPayment(id, { amount, periodMonth, method, note, paidUntil } = {}) {
   const { db, user } = authorize(SUPER)
   const business = find(db, id)
   if (typeof periodMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)) throw coded('validation')
@@ -81,13 +81,13 @@ export function recordBillingPayment(id, { amount, periodMonth, method, note, pa
   return { ...payment }
 }
 
-export function listBillingPayments(id) {
+export async function listBillingPayments(id) {
   const { db } = authorize(SUPER)
   find(db, id)
   return db.billingPayments.filter((p) => p.businessId === id).map((p) => ({ ...p }))
 }
 
-export function setBusinessBlocked(id, { blocked, reason } = {}) {
+export async function setBusinessBlocked(id, { blocked, reason } = {}) {
   const { db } = authorize(SUPER)
   const business = find(db, id)
   if (typeof blocked !== 'boolean') throw coded('validation')
@@ -98,7 +98,7 @@ export function setBusinessBlocked(id, { blocked, reason } = {}) {
   return out(business)
 }
 
-export function setAlertWindowDays(n) {
+export async function setAlertWindowDays(n) {
   const { db } = authorize(SUPER)
   if (!Number.isInteger(n) || n < 1 || n > 60) throw coded('validation')
   db.platform.alertWindowDays = n

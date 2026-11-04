@@ -17,29 +17,31 @@ const payment = ref({})
 const cancelling = ref(null)
 const reason = ref('')
 const error = ref('')
+const busy = ref(false)
 
 const inProgress = computed(() => orders.value.filter((o) => o.status === 'in_progress'))
 const rest = computed(() => orders.value.filter((o) => o.status !== 'in_progress'))
 const time = (d) => d.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false })
 
-function load() {
-  orders.value = listShiftOrders()
-  currentKey.value = getShiftStatus().current.shiftKey
+async function load() {
+  orders.value = await listShiftOrders()
+  currentKey.value = (await getShiftStatus()).current.shiftKey
 }
-function run(fn) {
+async function run(fn) {
   error.value = ''
-  try { fn(); cancelling.value = null; reason.value = '' } catch (e) {
+  busy.value = true
+  try { await fn(); cancelling.value = null; reason.value = '' } catch (e) {
     error.value = e.code === 'validation' ? 'Escribí el motivo de la anulación (máximo 200 caracteres).' : errorText(e)
-  }
-  try { load() } catch { /* error already shown */ }
+  } finally { busy.value = false }
+  try { await load() } catch { /* error already shown */ }
 }
-function finish(o) {
+async function finish(o) {
   if (!payment.value[o.id]) { error.value = 'Elegí el método de pago.'; return }
-  run(() => finishOrder(o.id, { paymentMethod: payment.value[o.id] }))
+  await run(() => finishOrder(o.id, { paymentMethod: payment.value[o.id] }))
 }
 const cancel = (o) => run(() => cancelOrder(o.id, { reason: reason.value }))
 
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 </script>
 
 <template>
@@ -75,13 +77,13 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
               </label>
             </fieldset>
             <div class="flex flex-wrap gap-2">
-              <button type="button" :class="btn" @click="finish(o)">Lavada terminada</button>
+              <button type="button" :disabled="busy" :class="btn" @click="finish(o)">Lavada terminada</button>
               <button type="button" :class="btn" @click="cancelling = o.id; reason = ''">Anular</button>
             </div>
             <div v-if="cancelling === o.id" class="space-y-2">
               <label :for="`reason-${o.id}`" class="block">Motivo de la anulación</label>
               <input :id="`reason-${o.id}`" v-model="reason" type="text" maxlength="200" :class="input" />
-              <button type="button" :class="btn" @click="cancel(o)">Confirmar anulación</button>
+              <button type="button" :disabled="busy" :class="btn" @click="cancel(o)">Confirmar anulación</button>
             </div>
           </div>
         </li>

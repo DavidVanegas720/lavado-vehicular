@@ -19,20 +19,22 @@ const success = ref('')
 const newW = reactive({ name: '', percent: '', payFrequency: 'biweekly' })
 const edit = ref(null) // { id, name, percent, payFrequency }
 const history = ref(null) // washer id whose history is open
+const busy = ref(false)
 
 const when = (d) => new Date(d).toLocaleString('es-CO', { timeZone: 'America/Bogota' })
 
-function load() { washers.value = listWashers() }
+async function load() { washers.value = await listWashers() }
 
 // Runs an action: clears messages, reloads on success, shows errorText on failure. Returns true on success.
-function run(fn, ok) {
+async function run(fn, ok) {
   error.value = ''
   success.value = ''
-  try { fn(); load(); success.value = ok; return true } catch (e) {
+  busy.value = true
+  try { await fn(); await load(); success.value = ok; return true } catch (e) {
     error.value = errorText(e, msgs)
-    if (e.code === 'not_found') try { load() } catch { /* shown above */ }
+    if (e.code === 'not_found') try { await load() } catch { /* shown above */ }
     return false
-  }
+  } finally { busy.value = false }
 }
 
 function bpOrError(text) {
@@ -41,30 +43,30 @@ function bpOrError(text) {
   return bp
 }
 
-function add() {
+async function add() {
   error.value = ''
   success.value = ''
   const bp = bpOrError(newW.percent)
   if (bp === null) return
-  if (run(() => createWasher({ name: newW.name, commissionBp: bp, payFrequency: newW.payFrequency }), 'Lavador creado.')) {
+  if (await run(() => createWasher({ name: newW.name, commissionBp: bp, payFrequency: newW.payFrequency }), 'Lavador creado.')) {
     Object.assign(newW, { name: '', percent: '', payFrequency: 'biweekly' })
   }
 }
 
-function save() {
+async function save() {
   const e = edit.value
   error.value = ''
   success.value = ''
   const bp = bpOrError(e.percent)
   if (bp === null) return
-  if (run(() => updateWasher(e.id, { name: e.name, commissionBp: bp, payFrequency: e.payFrequency }), 'Lavador guardado.')) edit.value = null
+  if (await run(() => updateWasher(e.id, { name: e.name, commissionBp: bp, payFrequency: e.payFrequency }), 'Lavador guardado.')) edit.value = null
 }
 
 function startEdit(w) {
   edit.value = { id: w.id, name: w.name, percent: formatPercent(w.commissionBp).replace(/\s*%$/, '').trim(), payFrequency: w.payFrequency }
 }
 
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 </script>
 
 <template>
@@ -87,7 +89,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
           </label>
         </fieldset>
         <div class="flex flex-wrap gap-2">
-          <button type="submit" :class="btn">Guardar</button>
+          <button type="submit" :disabled="busy" :class="btn">Guardar</button>
           <button type="button" :class="btn2" @click="edit = null">Cancelar</button>
         </div>
       </form>
@@ -132,6 +134,6 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
         <input v-model="newW.payFrequency" type="radio" name="nw-f" :value="key" class="size-5" />{{ label }}
       </label>
     </fieldset>
-    <button type="submit" :class="btn">Crear lavador</button>
+    <button type="submit" :disabled="busy" :class="btn">Crear lavador</button>
   </form>
 </template>

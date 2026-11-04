@@ -5,7 +5,7 @@ import { parsePlate } from '../domain/plate.js'
 
 const ADMIN = ['admin']
 
-export function getPlateHistory(rawPlate) {
+export async function getPlateHistory(rawPlate) {
   const { business, db } = authorize(ADMIN)
   const parsed = parsePlate(rawPlate, 'motorcycle', true)
   if (!parsed) throw coded('validation')

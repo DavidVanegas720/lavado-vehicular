@@ -25,10 +25,11 @@ const pay = reactive({ washerId: '', amount: '', period: 'previous', note: '' })
 const fix = reactive({ washerId: '', amount: '', minus: false, reason: '' })
 const flow = reactive({ periodType: 'daily', businessDate: '' })
 const cash = ref(null)
+const busy = ref(false)
 
 const when = (d) => new Date(d).toLocaleString('es-CO', { timeZone: 'America/Bogota' })
 
-function load() { balances.value = listWasherBalances() }
+async function load() { balances.value = await listWasherBalances() }
 
 function fail(e) {
   success.value = ''
@@ -36,21 +37,22 @@ function fail(e) {
 }
 
 // Runs an action: clears messages, shows errorText on failure. Returns true on success.
-function run(fn, ok) {
+async function run(fn, ok) {
   error.value = ''
   success.value = ''
-  try { fn(); success.value = ok; return true } catch (e) { fail(e); return false }
+  busy.value = true
+  try { await fn(); success.value = ok; return true } catch (e) { fail(e); return false } finally { busy.value = false }
 }
 
-function reload() {
-  load()
-  if (open.value) ledger.value = getWasherLedger(open.value)
+async function reload() {
+  await load()
+  if (open.value) ledger.value = await getWasherLedger(open.value)
 }
 
-function toggle(id) {
+async function toggle(id) {
   error.value = ''
   if (open.value === id) { open.value = null; ledger.value = null; return }
-  try { ledger.value = getWasherLedger(id); open.value = id } catch (e) { fail(e); try { load() } catch { /* shown above */ } }
+  try { ledger.value = await getWasherLedger(id); open.value = id } catch (e) { fail(e); try { await load() } catch { /* shown above */ } }
 }
 
 function amountOrError(text) {
@@ -59,33 +61,34 @@ function amountOrError(text) {
   return n
 }
 
-function submitPay() {
+async function submitPay() {
   error.value = ''
   success.value = ''
   const amount = amountOrError(pay.amount)
   if (amount === null) return
-  if (run(() => { recordOutsidePayment({ washerId: pay.washerId, amount, period: pay.period, note: pay.note }); reload() }, 'Pago registrado.')) {
+  if (await run(async () => { await recordOutsidePayment({ washerId: pay.washerId, amount, period: pay.period, note: pay.note }); await reload() }, 'Pago registrado.')) {
     Object.assign(pay, { amount: '', note: '' })
   }
 }
 
-function submitFix() {
+async function submitFix() {
   error.value = ''
   success.value = ''
   const n = amountOrError(fix.amount)
   if (n === null) return
-  if (run(() => { recordCorrection({ washerId: fix.washerId, amount: fix.minus ? -n : n, reason: fix.reason }); reload() }, 'Corrección registrada.')) {
+  if (await run(async () => { await recordCorrection({ washerId: fix.washerId, amount: fix.minus ? -n : n, reason: fix.reason }); await reload() }, 'Corrección registrada.')) {
     Object.assign(fix, { amount: '', minus: false, reason: '' })
   }
 }
 
-function showFlow() {
+async function showFlow() {
   error.value = ''
   success.value = ''
-  try { cash.value = getCashFlow({ ...flow }); success.value = 'Flujo actualizado.' } catch (e) { error.value = errorText(e, { validation: 'Elegí una fecha válida.' }) }
+  busy.value = true
+  try { cash.value = await getCashFlow({ ...flow }); success.value = 'Flujo actualizado.' } catch (e) { error.value = errorText(e, { validation: 'Elegí una fecha válida.' }) } finally { busy.value = false }
 }
 
-onMounted(() => { try { flow.businessDate = getShiftStatus().current.businessDate; load() } catch (e) { fail(e) } })
+onMounted(async () => { try { flow.businessDate = (await getShiftStatus()).current.businessDate; await load() } catch (e) { fail(e) } })
 </script>
 
 <template>
@@ -137,7 +140,7 @@ onMounted(() => { try { flow.businessDate = getShiftStatus().current.businessDat
     </fieldset>
     <label for="pp-n" class="block">Nota</label>
     <input id="pp-n" v-model="pay.note" type="text" maxlength="200" :class="input" />
-    <button type="submit" :class="btn">Registrar pago</button>
+    <button type="submit" :disabled="busy" :class="btn">Registrar pago</button>
   </form>
 
   <form :class="[card, 'mb-6']" @submit.prevent="submitFix">
@@ -153,7 +156,7 @@ onMounted(() => { try { flow.businessDate = getShiftStatus().current.businessDat
     <p id="co-h" class="text-sm">Sin marcar: baja lo que se le debe. Marcada: sube lo que se le debe.</p>
     <label for="co-r" class="block">Motivo</label>
     <input id="co-r" v-model="fix.reason" type="text" maxlength="200" :class="input" />
-    <button type="submit" :class="btn">Registrar corrección</button>
+    <button type="submit" :disabled="busy" :class="btn">Registrar corrección</button>
   </form>
 
   <section :class="card" aria-labelledby="cf-h">
@@ -167,7 +170,7 @@ onMounted(() => { try { flow.businessDate = getShiftStatus().current.businessDat
       </fieldset>
       <label for="cf-d" class="block">Fecha</label>
       <input id="cf-d" v-model="flow.businessDate" type="date" :class="input" />
-      <button type="submit" :class="btn">Ver</button>
+      <button type="submit" :disabled="busy" :class="btn">Ver</button>
     </form>
     <div v-if="cash" class="space-y-1">
       <p>Del {{ cash.period.start }} al {{ cash.period.end }}</p>

@@ -15,29 +15,31 @@ const error = ref('')
 const success = ref('')
 const newName = ref('')
 const edit = ref(null) // { id, name }
+const busy = ref(false)
 
-function load() { ops.value = listOperators() }
+async function load() { ops.value = await listOperators() }
 
 // Runs an action: clears messages, reloads on success, shows errorText on failure. Returns true on success.
-function run(fn, ok) {
+async function run(fn, ok) {
   error.value = ''
   success.value = ''
-  try { fn(); load(); success.value = ok; return true } catch (e) {
+  busy.value = true
+  try { await fn(); await load(); success.value = ok; return true } catch (e) {
     error.value = errorText(e, msgs)
-    if (e.code === 'not_found') try { load() } catch { /* shown above */ }
+    if (e.code === 'not_found') try { await load() } catch { /* shown above */ }
     return false
-  }
+  } finally { busy.value = false }
 }
 
-function add() {
-  if (run(() => createOperator({ name: newName.value }), 'Operador creado.')) newName.value = ''
+async function add() {
+  if (await run(() => createOperator({ name: newName.value }), 'Operador creado.')) newName.value = ''
 }
 
-function save() {
-  if (run(() => renameOperator(edit.value.id, edit.value.name), 'Operador guardado.')) edit.value = null
+async function save() {
+  if (await run(() => renameOperator(edit.value.id, edit.value.name), 'Operador guardado.')) edit.value = null
 }
 
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 </script>
 
 <template>
@@ -52,7 +54,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
         <label :for="`eo-n-${o.id}`" class="block">Nombre</label>
         <input :id="`eo-n-${o.id}`" v-model="edit.name" type="text" maxlength="60" :class="input" />
         <div class="flex flex-wrap gap-2">
-          <button type="submit" :class="btn">Guardar</button>
+          <button type="submit" :disabled="busy" :class="btn">Guardar</button>
           <button type="button" :class="btn2" @click="edit = null">Cancelar</button>
         </div>
       </form>
@@ -72,6 +74,6 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
     <h2 class="font-bold">Nuevo operador</h2>
     <label for="no-n" class="block">Nombre</label>
     <input id="no-n" v-model="newName" type="text" maxlength="60" :class="input" />
-    <button type="submit" :class="btn">Crear operador</button>
+    <button type="submit" :disabled="busy" :class="btn">Crear operador</button>
   </form>
 </template>

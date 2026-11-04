@@ -14,7 +14,7 @@ export const tillPaymentsOf = (db, businessId, shiftKey) =>
 const ordersOf = (db, businessId) => db.orders.filter((o) => o.businessId === businessId)
 const paymentsOf = (db, businessId) => db.washerPayments.filter((p) => p.businessId === businessId)
 
-export function listTillPayables() {
+export async function listTillPayables() {
   const { business, db } = authorize(OPERATOR)
   const today = shiftOf(now(), business.shifts).businessDate
   const orders = ordersOf(db, business.id)
@@ -32,7 +32,7 @@ export function listTillPayables() {
   )
 }
 
-export function recordTillPayment(shiftKey, input) {
+export async function recordTillPayment(shiftKey, input) {
   const { user, business, db } = authorize(OPERATOR)
   const state = shiftState(db.shiftEvents.filter((e) => e.businessId === business.id), shiftKey)
   if (state === 'not_opened') throw coded('shift_not_open')
@@ -60,7 +60,7 @@ const paidIn = (entries, washerId, periodKey) =>
 const earnedIn = (orders, washerId, period) =>
   orders.filter((o) => o.washerId === washerId && o.businessDate >= period.start && o.businessDate <= period.end).reduce((s, o) => s + earnedOf(o), 0)
 
-export function listWasherBalances() {
+export async function listWasherBalances() {
   const { business, db } = authorize(ADMIN)
   const today = shiftOf(now(), business.shifts).businessDate
   const orders = ordersOf(db, business.id)
@@ -76,7 +76,7 @@ export function listWasherBalances() {
   )
 }
 
-export function getWasherLedger(washerId) {
+export async function getWasherLedger(washerId) {
   const { business, db } = authorize(ADMIN)
   const washer = db.catalogs[business.id].washers.find((w) => w.id === washerId)
   if (!washer) throw coded('not_found')
@@ -97,7 +97,7 @@ export function getWasherLedger(washerId) {
   })
 }
 
-export function recordOutsidePayment(input) {
+export async function recordOutsidePayment(input) {
   const { user, business, db } = authorize(ADMIN)
   const washer = db.catalogs[business.id].washers.find((w) => w.id === input?.washerId)
   if (!washer) throw coded('validation')
@@ -116,7 +116,7 @@ export function recordOutsidePayment(input) {
   return structuredClone(payment)
 }
 
-export function recordCorrection(input) {
+export async function recordCorrection(input) {
   const { user, business, db } = authorize(ADMIN)
   const washer = db.catalogs[business.id].washers.find((w) => w.id === input?.washerId)
   if (!washer) throw coded('not_found')

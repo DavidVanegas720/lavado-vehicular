@@ -20,46 +20,48 @@ const pay = reactive({ amount: '', periodMonth: '', method: 'Transferencia', not
 const reason = ref('')
 const error = ref('')
 const success = ref('')
+const busy = ref(false)
 let rowKey = 0
 
-function load() {
-  biz.value = listBusinesses().businesses.find((b) => b.id === props.businessId)
+async function load() {
+  biz.value = (await listBusinesses()).businesses.find((b) => b.id === props.businessId)
   const b = biz.value
   Object.assign(f, {
     name: b.name, motorcycle: b.enabledVehicleTypes.includes('motorcycle'), car: b.enabledVehicleTypes.includes('car'),
     fee: String(b.billing.monthlyFee), shifts: b.shifts.map((s) => ({ ...s, key: rowKey++ })),
   })
-  payments.value = listBillingPayments(b.id)
+  payments.value = await listBillingPayments(b.id)
   pay.paidUntil = addMonths(b.billing.paidUntil, 1) // PD-6
   pay.periodMonth = pay.paidUntil.slice(0, 7)
 }
-function run(fn, ok, overrides) {
+async function run(fn, ok, overrides) {
   error.value = ''; success.value = ''
-  try { fn(); success.value = ok; load(); emit('changed'); return true } catch (e) { error.value = errorText(e, overrides); return false }
+  busy.value = true
+  try { await fn(); success.value = ok; await load(); emit('changed'); return true } catch (e) { error.value = errorText(e, overrides); return false } finally { busy.value = false }
 }
 // Each form sends only its own fields; the mock needs the full set, so the rest comes from the saved values.
-function saveData() {
+async function saveData() {
   const enabledVehicleTypes = [f.motorcycle && 'motorcycle', f.car && 'car'].filter(Boolean)
-  run(() => updateBusiness(props.businessId, { name: f.name, enabledVehicleTypes, monthlyFee: parsePesos(f.fee), shifts: biz.value.shifts }), 'Datos guardados.',
+  await run(() => updateBusiness(props.businessId, { name: f.name, enabledVehicleTypes, monthlyFee: parsePesos(f.fee), shifts: biz.value.shifts }), 'Datos guardados.',
     { validation: 'Revisá nombre, al menos un tipo y la mensualidad en pesos.' })
 }
-function saveShifts() {
+async function saveShifts() {
   if (f.shifts.some((s) => !s.name.trim())) { success.value = ''; error.value = 'Escribí el nombre de cada turno.'; return }
   const shifts = f.shifts.map(({ id, name, startHour, endHour }) => ({ id, name, startHour: Number(startHour), endHour: Number(endHour) }))
-  run(() => updateBusiness(props.businessId, { name: biz.value.name, enabledVehicleTypes: biz.value.enabledVehicleTypes, monthlyFee: biz.value.billing.monthlyFee, shifts }), 'Turnos guardados.',
+  await run(() => updateBusiness(props.businessId, { name: biz.value.name, enabledVehicleTypes: biz.value.enabledVehicleTypes, monthlyFee: biz.value.billing.monthlyFee, shifts }), 'Turnos guardados.',
     { validation: 'Los turnos deben cubrir las 24 horas sin huecos ni cruces.' })
 }
 const addRow = () => f.shifts.push({ id: null, name: '', startHour: 0, endHour: 0, key: rowKey++ })
 const removeRow = (i) => f.shifts.splice(i, 1)
-function register() {
-  run(() => recordBillingPayment(props.businessId, { amount: parsePesos(pay.amount), periodMonth: pay.periodMonth, method: pay.method, note: pay.note, paidUntil: pay.paidUntil }), 'Pago registrado.',
+async function register() {
+  await run(() => recordBillingPayment(props.businessId, { amount: parsePesos(pay.amount), periodMonth: pay.periodMonth, method: pay.method, note: pay.note, paidUntil: pay.paidUntil }), 'Pago registrado.',
     { validation: 'Revisá el valor en pesos, el mes, el medio y la fecha.' })
   if (!error.value) { pay.amount = ''; pay.note = '' }
 }
 const block = (blocked) => run(() => setBusinessBlocked(props.businessId, { blocked, reason: reason.value }), blocked ? 'Negocio bloqueado.' : 'Negocio desbloqueado.',
   { validation: 'Escribí el motivo (1 a 200 caracteres).' })
 
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 </script>
 
 <template>
@@ -76,7 +78,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
         <label class="inline-flex min-h-11 items-center gap-2"><input v-model="f.car" type="checkbox" class="size-5" /> Carro</label>
       </fieldset>
       <div><label for="bd-f" class="block font-bold">Mensualidad (pesos)</label><input id="bd-f" v-model="f.fee" type="text" inputmode="numeric" autocomplete="off" :class="input" /></div>
-      <button type="submit" :class="btn">Guardar datos</button>
+      <button type="submit" :disabled="busy" :class="btn">Guardar datos</button>
     </form>
 
     <form class="space-y-3" aria-labelledby="sh-h" @submit.prevent="saveShifts">
@@ -93,7 +95,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
       </div>
       <div class="flex gap-2">
         <button type="button" class="min-h-11 rounded border border-slate-400 px-4" :class="focus" @click="addRow">Agregar turno</button>
-        <button type="submit" :class="btn">Guardar turnos</button>
+        <button type="submit" :disabled="busy" :class="btn">Guardar turnos</button>
       </div>
     </form>
 
@@ -113,7 +115,7 @@ onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
         <div><label for="pg-t" class="block">Medio de pago</label><input id="pg-t" v-model="pay.method" type="text" maxlength="30" :class="input" /></div>
         <div><label for="pg-o" class="block">Nota (opcional)</label><input id="pg-o" v-model="pay.note" type="text" maxlength="200" :class="input" /></div>
         <div><label for="pg-u" class="block">Pagado hasta</label><input id="pg-u" v-model="pay.paidUntil" type="date" :class="input" /></div>
-        <button type="submit" :class="btn">Registrar pago</button>
+        <button type="submit" :disabled="busy" :class="btn">Registrar pago</button>
       </form>
     </section>
 

@@ -13,11 +13,13 @@ const TILES = [['day', 'Hoy'], ['week', 'Semana'], ['month', 'Mes'], ['all', 'To
 const plate = ref('')
 const result = ref(null)
 const error = ref('')
+const busy = ref(false)
 
-function search() {
+async function search() {
   error.value = ''
   result.value = null
-  try { result.value = getPlateHistory(plate.value) } catch (e) { error.value = errorText(e) }
+  busy.value = true
+  try { result.value = await getPlateHistory(plate.value) } catch (e) { error.value = errorText(e) } finally { busy.value = false }
 }
 </script>
 
@@ -28,7 +30,7 @@ function search() {
       <label for="plate" class="block">Placa</label>
       <input id="plate" v-model="plate" type="text" maxlength="12" autocomplete="off" :class="input" />
     </div>
-    <button type="submit" :class="btn">Buscar</button>
+    <button type="submit" :disabled="busy" :class="btn">Buscar</button>
   </form>
   <p v-if="error" role="alert" class="mb-4 rounded bg-red-100 p-3 text-red-900">{{ error }}</p>
 

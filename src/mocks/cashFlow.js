@@ -4,7 +4,7 @@ import { payPeriodOf, earnedOf } from '../domain/washerPay.js'
 
 const sum = (xs, f) => xs.reduce((s, x) => s + f(x), 0)
 
-export function getCashFlow({ periodType, businessDate } = {}) {
+export async function getCashFlow({ periodType, businessDate } = {}) {
   const { business, db } = authorize(['admin'])
   if (!/^\d{4}-\d{2}-\d{2}$/.test(businessDate ?? '')) throw coded('validation')
   const period = payPeriodOf(businessDate, periodType) // throws validation on a bad periodType

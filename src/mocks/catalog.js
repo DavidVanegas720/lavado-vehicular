@@ -17,7 +17,7 @@ function visible(role, c, key) {
 /** Active-only catalog for createOrder. */
 export const activeSnapshot = (c) => Object.fromEntries(Object.keys(c).map((k) => [k, visible('operator', c, k)]))
 
-const read = (key) => () => {
+const read = (key) => async () => {
   const { user, business, db } = authorize(READERS)
   return structuredClone(visible(user.role, db.catalogs[business.id], key))
 }
@@ -68,7 +68,7 @@ const priceRows = (map, others, make) =>
     return { ...make(id), price: int(price, 1) }
   })
 
-export function createCategory({ name: n, minCc, maxCc, prices, vehicleType } = {}) {
+export async function createCategory({ name: n, minCc, maxCc, prices, vehicleType } = {}) {
   const { business, db } = authorize(ADMIN)
   const c = db.catalogs[business.id]
   const vt = enabled(business, vehicleType)
@@ -86,7 +86,7 @@ export function createCategory({ name: n, minCc, maxCc, prices, vehicleType } = 
   return structuredClone(cat)
 }
 
-export function updateCategory(id, { name: n, minCc, maxCc } = {}) {
+export async function updateCategory(id, { name: n, minCc, maxCc } = {}) {
   const { business, db } = authorize(ADMIN)
   const c = db.catalogs[business.id]
   const cat = find(c.categories, id)
@@ -101,7 +101,7 @@ export function updateCategory(id, { name: n, minCc, maxCc } = {}) {
   return structuredClone(cat)
 }
 
-export function setCategoryActive(id, active) {
+export async function setCategoryActive(id, active) {
   const { business, db } = authorize(ADMIN)
   const c = db.catalogs[business.id]
   const cat = find(c.categories, id)
@@ -113,7 +113,7 @@ export function setCategoryActive(id, active) {
   return structuredClone(cat)
 }
 
-export function createWashType({ name: n, prices, vehicleType } = {}) {
+export async function createWashType({ name: n, prices, vehicleType } = {}) {
   const { business, db } = authorize(ADMIN)
   const c = db.catalogs[business.id]
   const type = { id: `t${db.nextId}`, name: name(n), active: true, vehicleType: enabled(business, vehicleType) }
@@ -125,14 +125,14 @@ export function createWashType({ name: n, prices, vehicleType } = {}) {
   return structuredClone(type)
 }
 
-export function updateWashType(id, { name: n } = {}) {
+export async function updateWashType(id, { name: n } = {}) {
   const { business, db } = authorize(ADMIN)
   const type = find(db.catalogs[business.id].washTypes, id)
   type.name = name(n)
   return structuredClone(type)
 }
 
-export function setWashTypeActive(id, active) {
+export async function setWashTypeActive(id, active) {
   const { business, db } = authorize(ADMIN)
   const c = db.catalogs[business.id]
   const type = find(c.washTypes, id)
@@ -142,7 +142,7 @@ export function setWashTypeActive(id, active) {
 }
 
 /** Works on inactive items too, so the admin can price before reactivating. */
-export function setPrice(categoryId, washTypeId, price) {
+export async function setPrice(categoryId, washTypeId, price) {
   const { business, db } = authorize(ADMIN)
   const c = db.catalogs[business.id]
   find(c.categories, categoryId)
@@ -154,7 +154,7 @@ export function setPrice(categoryId, washTypeId, price) {
   return { categoryId, washTypeId, price }
 }
 
-export function createWasher({ name: n, commissionBp, payFrequency = 'biweekly' } = {}) {
+export async function createWasher({ name: n, commissionBp, payFrequency = 'biweekly' } = {}) {
   const { business, db } = authorize(ADMIN)
   const washer = {
     id: `w${db.nextId}`,
@@ -171,7 +171,7 @@ export function createWasher({ name: n, commissionBp, payFrequency = 'biweekly' 
 }
 
 /** Omitted fields stay unchanged. A changed bp or frequency appends a history row; orders are never touched. */
-export function updateWasher(id, patch = {}) {
+export async function updateWasher(id, patch = {}) {
   const { user, business, db } = authorize(ADMIN)
   const washer = find(db.catalogs[business.id].washers, id)
   const next = { name: name(patch.name ?? washer.name), commissionBp: int(patch.commissionBp ?? washer.commissionBp, 0, 10000), payFrequency: frequency(patch.payFrequency ?? washer.payFrequency) }
@@ -182,9 +182,9 @@ export function updateWasher(id, patch = {}) {
   return structuredClone(washer)
 }
 
-export const setWasherCommissionBp = (id, bp) => updateWasher(id, { commissionBp: bp })
+export const setWasherCommissionBp = async (id, bp) => updateWasher(id, { commissionBp: bp })
 
-export function setWasherActive(id, active) {
+export async function setWasherActive(id, active) {
   const { business, db } = authorize(ADMIN)
   const washer = find(db.catalogs[business.id].washers, id)
   washer.active = bool(active)

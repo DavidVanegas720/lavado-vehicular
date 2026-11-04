@@ -27,29 +27,31 @@ const reopenReason = ref('')
 const error = ref('')
 const success = ref('')
 const result = ref(null)
+const busy = ref(false)
 
 const selected = computed(() => instances.value.find((i) => i.shiftKey === selectedKey.value))
 const blocked = computed(() => !selected.value || !selected.value.ended || selected.value.unfinished.length > 0)
 const time = (d) => d.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false })
 
-function load() {
-  const st = getShiftStatus()
+async function load() {
+  const st = await getShiftStatus()
   // an instance past its end is exactly one listed in `unclosed`, so the view needs no clock
   const keys = [...st.unclosed.map((u) => [u.shiftKey, true]), ...(st.current.state === 'open' ? [[st.current.shiftKey, false]] : [])]
-  instances.value = keys.map(([k, ended]) => ({ ...getClosePreview(k), ended }))
+  instances.value = await Promise.all(keys.map(async ([k, ended]) => ({ ...(await getClosePreview(k)), ended })))
   recentClosed.value = st.recentClosed
-  payables.value = listTillPayables()
+  payables.value = await listTillPayables()
   if (!instances.value.some((i) => i.shiftKey === selectedKey.value)) selectedKey.value = instances.value[0]?.shiftKey ?? ''
   if (!payables.value.some((w) => w.washerId === washerId.value)) washerId.value = ''
 }
-function run(fn, done) {
+async function run(fn, done) {
   error.value = ''
   success.value = ''
-  try { fn(); success.value = done } catch (e) { error.value = errorText(e, msgs) }
-  try { load() } catch (e) { error.value = errorText(e) }
+  busy.value = true
+  try { await fn(); success.value = done } catch (e) { error.value = errorText(e, msgs) } finally { busy.value = false }
+  try { await load() } catch (e) { error.value = errorText(e) }
 }
 
-onMounted(() => { try { load() } catch (e) { error.value = errorText(e) } })
+onMounted(async () => { try { await load() } catch (e) { error.value = errorText(e) } })
 
 function pickWasher(w) {
   washerId.value = w.washerId
@@ -57,26 +59,27 @@ function pickWasher(w) {
   period.value = w.payFrequency === 'daily' ? 'current' : 'previous'
 }
 
-function pay() {
+async function pay() {
   const amount = parsePesos(amountText.value)
   if (!washerId.value || !amount) { error.value = 'Elegí un lavador y escribí un monto mayor a cero.'; success.value = ''; return }
-  run(() => recordTillPayment(selectedKey.value, { washerId: washerId.value, amount, period: period.value }), 'Pago registrado.')
+  await run(() => recordTillPayment(selectedKey.value, { washerId: washerId.value, amount, period: period.value }), 'Pago registrado.')
   if (!error.value) { amountText.value = ''; washerId.value = '' }
 }
 
-function close() {
+async function close() {
   const countedCash = parsePesos(countText.value)
   if (countedCash === null) { error.value = 'Escribí el efectivo contado en pesos, sin decimales.'; success.value = ''; return }
   error.value = ''
   success.value = ''
-  try { result.value = closeShift(selectedKey.value, { countedCash }); countText.value = '' } catch (e) { error.value = errorText(e, msgs) }
-  try { load() } catch (e) { error.value = errorText(e) }
+  busy.value = true
+  try { result.value = await closeShift(selectedKey.value, { countedCash }); countText.value = '' } catch (e) { error.value = errorText(e, msgs) } finally { busy.value = false }
+  try { await load() } catch (e) { error.value = errorText(e) }
 }
 
-function reopen() {
+async function reopen() {
   const reason = reopenReason.value.trim()
   if (!reopenKey.value || reason.length < 1 || reason.length > 200) { error.value = 'Elegí el turno y escribí el motivo (1 a 200 caracteres).'; success.value = ''; return }
-  run(() => reopenShift(reopenKey.value, { reason }), 'Turno reabierto.')
+  await run(() => reopenShift(reopenKey.value, { reason }), 'Turno reabierto.')
   if (!error.value) { reopenReason.value = ''; reopenKey.value = ''; result.value = null }
 }
 </script>
@@ -136,7 +139,7 @@ function reopen() {
         <label :class="row"><input v-model="period" type="radio" name="period" value="previous" class="size-5" /> Periodo anterior</label>
         <label :class="row"><input v-model="period" type="radio" name="period" value="current" class="size-5" /> Periodo actual</label>
       </fieldset>
-      <button type="submit" :class="btn">Registrar pago</button>
+      <button type="submit" :disabled="busy" :class="btn">Registrar pago</button>
     </form>
 
     <form class="mb-6 space-y-3" aria-labelledby="close-h" @submit.prevent="close">
@@ -152,7 +155,7 @@ function reopen() {
         <label for="count" class="block">Efectivo contado</label>
         <input id="count" v-model="countText" type="text" inputmode="numeric" autocomplete="off" :class="input" />
       </div>
-      <button type="submit" :disabled="blocked" :class="btn">Cerrar turno</button>
+      <button type="submit" :disabled="blocked || busy" :class="btn">Cerrar turno</button>
     </form>
   </template>
 
@@ -169,6 +172,6 @@ function reopen() {
       <label for="reopen-reason" class="block">Motivo de la reapertura</label>
       <input id="reopen-reason" v-model="reopenReason" type="text" maxlength="200" :class="input" />
     </div>
-    <button type="submit" :class="btn">Reabrir turno</button>
+    <button type="submit" :disabled="busy" :class="btn">Reabrir turno</button>
   </form>
 </template>
