@@ -14,6 +14,8 @@ if (emulators) {
   cases(d);
   const { default: core } = await import('../../tests/contracts/cases/coreFlow.js' as string);
   core(d);
+  const { default: till } = await import('../../tests/contracts/cases/tillPay.js' as string);
+  till(d);
   test.after(() => d.close());
 }
 
@@ -105,5 +107,22 @@ test('orders/create racing shifts/close: never a stored close with an in_progres
       const open = (await db.collection(`${base}/orders`).where('shiftKey', '==', key).where('status', '==', 'in_progress').get()).size;
       assert.ok(!(closes && open), `round ${i}: close=${closes} in_progress=${open}`);
     }
+  } finally { await s.close(); }
+});
+
+test('two parallel payments of the whole balance: one 200, one validation; stored amount is an integer', { skip }, async () => {
+  const s = await start();
+  try {
+    const at = '2026-10-29T15:00:00Z';
+    const call = (path: string, body: unknown) => s.call(path, s.tokens.operatorA, body, new Date(at));
+    assert.equal((await call('shifts/open', { openingCash: 0 })).status, 200);
+    const o = (await (await call('orders/create', { id: randomUUID(), plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' })).json()) as { id: string };
+    assert.equal((await call('orders/finish', { orderId: o.id, paymentMethod: 'cash' })).status, 200);
+    const pay = () => call('washerPay/recordTillPayment', { shiftKey: '2026-10-29_unico', id: randomUUID(), washerId: 'pedro', amount: 10000, period: 'current' });
+    const rs = await Promise.all([pay(), pay()]);
+    assert.deepEqual(rs.map((r) => r.status).sort(), [200, 400]);
+    const docs = (await db.collection(`businesses/${s.ids.A}/washerPayments`).get()).docs;
+    assert.equal(docs.length, 1);
+    assert.ok(Number.isInteger(docs[0].data().amount));
   } finally { await s.close(); }
 });

@@ -5,6 +5,7 @@ import { SessionController } from './session.controller.js';
 import { ShiftsController } from './shifts.controller.js';
 import { CatalogController } from './catalog.controller.js';
 import { OrdersController } from './orders.controller.js';
+import { WasherPayController } from './washerPay.controller.js';
 
-@Module({ controllers: [SessionController, ShiftsController, CatalogController, OrdersController], providers: [{ provide: APP_GUARD, useClass: AuthGuard }] })
+@Module({ controllers: [SessionController, ShiftsController, CatalogController, OrdersController, WasherPayController], providers: [{ provide: APP_GUARD, useClass: AuthGuard }] })
 export class AppModule {}
