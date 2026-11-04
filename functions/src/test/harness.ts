@@ -9,10 +9,11 @@ const PASSWORD = 'test-password-1';
 
 // key -> [business, role, active]; claims are set before the first sign-in (09 §6)
 const USERS: Record<string, [string | null, string | null, boolean]> = {
-  adminA: ['A', 'admin', true], operatorA: ['A', 'operator', true], operator2A: ['A', 'operator', true], inactiveA: ['A', 'operator', false],
-  adminB: ['B', 'admin', true], operatorB: ['B', 'operator', true],
+  adminA: ['A', 'admin', true], operatorA: ['A', 'operator', true], operator2A: ['A', 'operator', true], adminB: ['B', 'admin', true], operatorB: ['B', 'operator', true], inactiveB: ['B', 'operator', false],
   adminC: ['C', 'admin', true], operatorC: ['C', 'operator', true], superadmin: [null, 'superadmin', true], stray: [null, null, true],
 };
+// member display names the shared operator cases expect (mock seed: Carlos, Laura)
+const NAMES: Record<string, string> = { operatorA: 'Carlos', operator2A: 'Laura' };
 const BUSINESSES: Record<string, [string, string]> = { A: ['Negocio A', 'active'], B: [SENTINEL, 'active'], C: ['Negocio C', 'blocked'] };
 
 export async function clearAll() {
@@ -20,12 +21,14 @@ export async function clearAll() {
   await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/emulator/v1/projects/${PROJECT}/accounts`, { method: 'DELETE' });
 }
 
-async function token(email: string, password: string) {
+export async function token(email: string, password: string) {
   const r = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=x`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email, password, returnSecureToken: true }),
   });
-  return ((await r.json()) as { idToken: string }).idToken;
+  const j = (await r.json()) as { idToken?: string; error?: { message: string } };
+  if (!j.idToken) throw new Error(j.error?.message ?? 'sign-in failed');
+  return j.idToken;
 }
 
 // The mock seed (src/mocks/seed.js), loaded at runtime so tsc does not compile the .js file.
@@ -54,7 +57,7 @@ export async function seed(password: string) {
     const { uid } = await auth.createUser({ email: `${k}@test.local`, password });
     uids[k] = uid;
     if (role) await auth.setCustomUserClaims(uid, b ? { role, businessId: ids[b] } : { role });
-    if (b) await db.doc(`businesses/${ids[b]}/members/${uid}`).set({ name: k, role, active });
+    if (b) await db.doc(`businesses/${ids[b]}/members/${uid}`).set({ name: NAMES[k] ?? k, role, active });
   }
   return { ids, uids };
 }

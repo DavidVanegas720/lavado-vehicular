@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { db } from './firebase.js';
-import { emulators, start } from './test/harness.js';
+import { auth, db } from './firebase.js';
+import { emulators, start, token } from './test/harness.js';
 import { apiDriver } from './test/driver.js';
 
 const skip = emulators ? false : 'needs the emulators (npm run test:api)';
@@ -18,6 +18,8 @@ if (emulators) {
   till(d);
   const { default: catalog } = await import('../../tests/contracts/cases/catalog.js' as string);
   catalog(d);
+  const { default: operators } = await import('../../tests/contracts/cases/operators.js' as string);
+  operators(d);
   test.after(() => d.close());
 }
 
@@ -33,7 +35,7 @@ test('no token and a token signed by nobody -> 401', { skip }, async () => {
 test('stray and inactive accounts get forbidden', { skip }, async () => {
   const s = await start();
   try {
-    for (const who of ['stray', 'inactiveA']) {
+    for (const who of ['stray', 'inactiveB']) {
       for (const path of ['session/get', 'shifts/open']) {
         const r = await s.call(path, s.tokens[who], { openingCash: 0 });
         assert.equal(r.status, 403, `${who} ${path}`);
@@ -160,5 +162,36 @@ test('parallel setCategoryActive(true) of two overlapping inactive categories: a
     assert.equal(rs.filter((r) => r.status === 200).length, 1);
     const active = (await db.collection(`businesses/${s.ids.A}/categories`).where('id', 'in', ids).get()).docs.filter((d) => d.data().active);
     assert.equal(active.length, 1);
+  } finally { await s.close(); }
+});
+
+// Operators (criterion 4, API-only): the Auth user carries the claims, `disabled` follows `active`, and an old token of a
+// deactivated operator is still verified by Auth but denied by the members doc on every route.
+test('operators: claims set, disabled follows active, deactivated operator forbidden on every call', { skip }, async () => {
+  const s = await start();
+  try {
+    const admin = (path: string, body: unknown) => s.call(path, s.tokens.adminA, body);
+    const mail = 'marta@test.local', pass = 'clave-segura-1';
+    const marta = (await (await admin('operators/create', { name: 'Marta', email: mail, password: pass })).json()) as { id: string };
+    const user = await auth.getUser(marta.id);
+    assert.deepEqual(user.customClaims, { role: 'operator', businessId: s.ids.A });
+    assert.equal(user.disabled, false);
+    const member = (await db.doc(`businesses/${s.ids.A}/members/${marta.id}`).get()).data()!;
+    assert.deepEqual([member.name, member.role, member.active, member.email, member.createdBy], ['Marta', 'operator', true, mail, s.uids.adminA]);
+    assert.equal(JSON.stringify(member).includes(pass), false);
+    const old = await token(mail, pass); // claims are in the first token
+    assert.equal((await s.call('shifts/status', old)).status, 200);
+    // Auth step failed after members was written: the old token still verifies, the members doc denies
+    await db.doc(`businesses/${s.ids.A}/members/${marta.id}`).update({ active: false });
+    for (const path of ['session/get', 'shifts/status', 'shifts/open', 'catalog/list', 'orders/listShift', 'washerPay/listTillPayables']) {
+      const r = await s.call(path, old, { openingCash: 0 });
+      assert.deepEqual([r.status, await r.json()], [403, { code: 'forbidden' }], path);
+    }
+    assert.equal((await admin('operators/setActive', { id: marta.id, active: false })).status, 200);
+    assert.equal((await auth.getUser(marta.id)).disabled, true);
+    await assert.rejects(() => token(mail, pass), /USER_DISABLED/);
+    assert.equal((await admin('operators/setActive', { id: marta.id, active: true })).status, 200);
+    assert.equal((await auth.getUser(marta.id)).disabled, false);
+    assert.equal((await s.call('session/get', await token(mail, pass))).status, 200);
   } finally { await s.close(); }
 });
