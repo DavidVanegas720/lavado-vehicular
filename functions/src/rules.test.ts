@@ -46,8 +46,10 @@ test('2a. every route has Roles metadata; AuthGuard is the APP_GUARD', () => {
 });
 
 test('2c. the route list and each route\'s roles are exactly the plan\'s (10-p8 R1)', () => {
-  const plan: Record<string, string[]> = { 'session/get': ['admin', 'operator', 'superadmin'], 'shifts/open': ['operator'] };
-  assert.deepEqual(routes.map((r) => r.path).sort(), Object.keys(plan));
+  const plan: Record<string, string[]> = { 'session/get': ['admin', 'operator', 'superadmin'], 'shifts/open': ['operator'],
+    'shifts/status': ['admin', 'operator'], 'shifts/closePreview': ['operator'], 'shifts/close': ['operator'], 'shifts/reopen': ['operator'],
+  };
+  assert.deepEqual(routes.map((r) => r.path).sort(), Object.keys(plan).sort());
   for (const r of routes) assert.deepEqual([...Reflect.getMetadata('roles', r.handler)].sort(), plan[r.path], r.path);
 });
 
