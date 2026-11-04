@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { listCategories, listWashTypes, listWashers, listPrices } from '../services/catalog.js'
+import { listCatalog } from '../services/catalog.js'
 import { createOrder } from '../services/orders.js'
 import { getShiftStatus, openShift } from '../services/shifts.js'
 import { formatCOP, parsePesos } from '../domain/money.js'
@@ -32,6 +32,7 @@ const reason = ref('')
 const error = ref('')
 const success = ref('')
 const busy = ref(false)
+const formId = ref(crypto.randomUUID()) // one id per intended wash: a retry after a lost reply replays, not doubles
 
 const fail = (e) => { error.value = errorText(e, { not_found: 'El catálogo cambió. Revisá la selección.' }) }
 
@@ -39,9 +40,7 @@ async function load() {
   status.value = await getShiftStatus()
   types.value = (await getSession())?.enabledVehicleTypes ?? ['motorcycle']
   if (!types.value.includes(vehicleType.value)) vehicleType.value = types.value[0]
-  cat.value = {
-    categories: await listCategories(), washTypes: await listWashTypes(), washers: await listWashers(), prices: await listPrices(),
-  }
+  cat.value = await listCatalog()
   // clear selections that no longer exist after a catalog reload
   const has = (list, id) => list.some((x) => x.id === id)
   if (!has(cat.value.categories, categoryId.value)) categoryId.value = ''
@@ -89,12 +88,13 @@ async function save() {
   busy.value = true
   try {
     const o = await createOrder({
-      plate: plate.value, plateSpecial: special.value, vehicleType: vehicleType.value, cc: isCar.value ? undefined : cc.value, categoryId: categoryId.value,
+      id: formId.value, plate: plate.value, plateSpecial: special.value, vehicleType: vehicleType.value, cc: isCar.value ? undefined : cc.value, categoryId: categoryId.value,
       washTypeId: washTypeId.value, washerId: washerId.value, isCourtesy: courtesy.value,
       courtesyReason: courtesy.value ? reason.value : undefined,
     })
     success.value = `Lavada registrada: placa ${o.plate}, cobro ${formatCOP(o.finalPrice)}, comisión ${formatCOP(o.commissionAmount)}.`
     plate.value = ''; special.value = false; ccText.value = ''; courtesy.value = false; reason.value = ''
+    formId.value = crypto.randomUUID()
   } catch (e) {
     fail(e)
     if (e.code === 'not_found' || e.code === 'shift_not_open') await load()

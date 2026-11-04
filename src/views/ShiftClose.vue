@@ -28,6 +28,7 @@ const error = ref('')
 const success = ref('')
 const result = ref(null)
 const busy = ref(false)
+const payId = ref(crypto.randomUUID()) // same rule as NewWash: a retried payment replays, never doubles
 
 const selected = computed(() => instances.value.find((i) => i.shiftKey === selectedKey.value))
 const blocked = computed(() => !selected.value || !selected.value.ended || selected.value.unfinished.length > 0)
@@ -62,8 +63,8 @@ function pickWasher(w) {
 async function pay() {
   const amount = parsePesos(amountText.value)
   if (!washerId.value || !amount) { error.value = 'Elegí un lavador y escribí un monto mayor a cero.'; success.value = ''; return }
-  await run(() => recordTillPayment(selectedKey.value, { washerId: washerId.value, amount, period: period.value }), 'Pago registrado.')
-  if (!error.value) { amountText.value = ''; washerId.value = '' }
+  await run(() => recordTillPayment(selectedKey.value, { id: payId.value, washerId: washerId.value, amount, period: period.value }), 'Pago registrado.')
+  if (!error.value) { amountText.value = ''; washerId.value = ''; payId.value = crypto.randomUUID() }
 }
 
 async function close() {
