@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { signIn, signOut, resetMock, setMockNow } from '../../src/mocks/session.js'
 import { openShift, closeShift, getShiftStatus, reopenShift } from '../../src/mocks/shifts.js'
 import { createOrder, finishOrder, cancelOrder, listShiftOrders } from '../../src/mocks/orders.js'
-import { listCategories, listWashers, updateWasher } from '../../src/mocks/catalog.js'
+import { listCategories, listWashers } from '../../src/mocks/catalog.js'
 
 const DAY1 = new Date('2026-10-29T15:00:00Z')
 const wash = { plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' }
@@ -28,22 +28,6 @@ test('150 cc example: Full 25.000, Pedro 40% -> commission 10.000, frozen names,
   assert.equal(o.businessDate, '2026-10-29')
   assert.equal(o.isoWeek, '2026-W44')
   assert.equal(o.month, '2026-10')
-})
-
-test('Pedro 40% -> 50% affects only later orders', async () => {
-  const first = await createOrder(wash)
-  await signIn('ana')
-  await updateWasher('pedro', { commissionBp: 5000 })
-  await assert.rejects(async () => updateWasher('pedro', { commissionBp: 10001 }), code('validation'))
-  assert.equal((await listWashers()).find((w) => w.id === 'pedro').commissionBp, 5000)
-  await signIn('carlos')
-  const second = await createOrder({ ...wash, plate: 'XYZ98' })
-  assert.equal(second.commissionAmount, 12500)
-  assert.equal(second.commissionBp, 5000)
-  const old = (await listShiftOrders()).find((o) => o.id === first.id)
-  assert.equal(old.commissionAmount, 10000)
-  assert.equal(old.commissionBp, 4000)
-  await assert.rejects(async () => updateWasher('pedro', { commissionBp: 3000 }), code('forbidden'))
 })
 
 test('courtesy: reason required (1-200); finalPrice 0, commission kept', async () => {

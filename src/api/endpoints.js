@@ -1,4 +1,4 @@
-// The P9 wire mapping: the mock's function names and signatures over `call(path, body)`. Pure, no Firebase import.
+// The P9 + P10 wire mapping: the mock's function names and signatures over `call(path, body)`. Pure, no Firebase import.
 export const makeApi = (call) => ({
   getSession: () => call('session/get', {}),
   openShift: (input) => call('shifts/open', input),
@@ -14,4 +14,29 @@ export const makeApi = (call) => ({
   listTillPayables: () => call('washerPay/listTillPayables', {}),
   recordTillPayment: (shiftKey, input) =>
     call('washerPay/recordTillPayment', { shiftKey, id: input?.id, washerId: input?.washerId, amount: input?.amount, period: input?.period }),
+  // P10 admin routes
+  createCategory: (input) => call('catalog/createCategory', input),
+  updateCategory: (id, input) => call('catalog/updateCategory', { id, ...input }),
+  setCategoryActive: (id, active) => call('catalog/setCategoryActive', { id, active }),
+  createWashType: (input) => call('catalog/createWashType', input),
+  updateWashType: (id, input) => call('catalog/updateWashType', { id, ...input }),
+  setWashTypeActive: (id, active) => call('catalog/setWashTypeActive', { id, active }),
+  setPrice: (categoryId, washTypeId, price) => call('catalog/setPrice', { categoryId, washTypeId, price }),
+  createWasher: (input) => call('catalog/createWasher', input),
+  updateWasher: (id, patch) => call('catalog/updateWasher', { id, ...patch }),
+  setWasherActive: (id, active) => call('catalog/setWasherActive', { id, active }),
+  listOperators: () => call('operators/list', {}),
+  createOperator: (input) => call('operators/create', { name: input?.name, email: input?.email, password: input?.password }),
+  renameOperator: (id, name) => call('operators/rename', { id, name }),
+  setOperatorActive: (id, active) => call('operators/setActive', { id, active }),
+  listShiftInstances: () => call('shifts/listInstances', {}),
+  getShiftInstance: (shiftKey) => call('shifts/getInstance', { shiftKey }),
+  listWasherBalances: () => call('washerPay/listBalances', {}),
+  getWasherLedger: (washerId) => call('washerPay/getLedger', { washerId }),
+  recordOutsidePayment: (input) =>
+    call('washerPay/recordOutsidePayment', { id: input?.id, washerId: input?.washerId, amount: input?.amount, period: input?.period, note: input?.note }),
+  recordCorrection: (input) =>
+    call('washerPay/recordCorrection', { id: input?.id, washerId: input?.washerId, amount: input?.amount, reason: input?.reason }),
+  getCashFlow: (input) => call('cashFlow/get', { periodType: input?.periodType, businessDate: input?.businessDate }),
+  getPlateHistory: (plate) => call('history/getPlate', { plate }),
 })

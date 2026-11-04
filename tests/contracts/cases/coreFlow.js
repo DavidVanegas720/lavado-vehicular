@@ -1,5 +1,5 @@
 // Shared cases for the order and shift flow. driver: { reset(), as(key), at(date), sessionGet(), openShift, getShiftStatus,
-// getClosePreview, closeShift, reopenShift, listCatalog, createOrder, finishOrder, cancelOrder, listShiftOrders }
+// getClosePreview, closeShift, reopenShift, listCatalog, createOrder, finishOrder, cancelOrder, listShiftOrders, updateWasher }
 // keys: operator (Carlos), operator2 (Laura), admin, otherOperator (business B), blockedOperator.
 // Run by the mock driver (root npm test) and the API driver (npm run test:api).
 import test from 'node:test'
@@ -146,6 +146,23 @@ export default function coreFlowCases(d) {
     await d.as('operator')
     await d.at(AFTER_END)
     assert.deepEqual((await d.listShiftOrders()).map((o) => o.id), [stuck.id])
+  })
+
+  test('Pedro 40% -> 50% affects only later orders', async () => {
+    await start()
+    const first = await d.createOrder(wash())
+    await d.as('admin')
+    await d.updateWasher('pedro', { commissionBp: 5000 })
+    await assert.rejects(() => d.updateWasher('pedro', { commissionBp: 10001 }), code('validation'))
+    assert.equal((await d.listCatalog()).washers.find((w) => w.id === 'pedro').commissionBp, 5000)
+    await d.as('operator')
+    const second = await d.createOrder(wash({ plate: 'XYZ98' }))
+    assert.equal(second.commissionAmount, 12500)
+    assert.equal(second.commissionBp, 5000)
+    const old = (await d.listShiftOrders()).find((o) => o.id === first.id)
+    assert.equal(old.commissionAmount, 10000)
+    assert.equal(old.commissionBp, 4000)
+    await assert.rejects(() => d.updateWasher('pedro', { commissionBp: 3000 }), code('forbidden'))
   })
 
   test('tenant and block: other business gets not_found; blocked business gets business_blocked', async () => {

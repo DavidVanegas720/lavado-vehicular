@@ -7,7 +7,8 @@ const clean = (v) => {
   if (n.length < 1 || n.length > 60) throw coded('validation')
   return n
 }
-const view = ({ id, name, active }) => ({ id, name, active })
+const view = ({ id, name, active, email = null }) => ({ id, name, active, email })
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const own = (db, business, id) =>
   db.users.find((u) => u.id === id && u.role === 'operator' && u.businessId === business.id) ??
   (() => { throw coded('not_found') })()
@@ -17,9 +18,15 @@ export async function listOperators() {
   return db.users.filter((u) => u.role === 'operator' && u.businessId === business.id).map(view)
 }
 
-export async function createOperator({ name } = {}) {
+/** Same checks as the API (E6). The mock keeps no password: it only checks the length. */
+export async function createOperator({ name, email, password } = {}) {
   const { business, db } = authorize(ADMIN)
-  const user = { id: `u${db.nextId}`, name: clean(name), role: 'operator', businessId: business.id, active: true }
+  const n = clean(name)
+  const mail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+  if (!EMAIL.test(mail) || mail.length > 254) throw coded('validation')
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) throw coded('validation')
+  if (db.users.some((u) => u.email === mail)) throw coded('email_taken') // Auth emails are global, across businesses
+  const user = { id: `u${db.nextId}`, name: n, role: 'operator', businessId: business.id, active: true, email: mail }
   db.users.push(user)
   db.nextId++
   return view(user)

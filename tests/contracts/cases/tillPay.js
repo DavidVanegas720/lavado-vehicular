@@ -1,4 +1,4 @@
-// Shared cases for till payments. Same driver and keys as coreFlow.js, plus listTillPayables and recordTillPayment.
+// Shared cases for till payments. Same driver and keys as coreFlow.js, plus listTillPayables, recordTillPayment and setWasherActive.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
@@ -46,5 +46,26 @@ export default function tillPayCases(d) {
     await d.at(AFTER_END)
     await d.closeShift(KEY, { countedCash: 75000 })
     await assert.rejects(() => d.recordTillPayment(KEY, pay(100)), code('shift_closed'))
+  })
+
+  test('washer deactivated after load -> not_found', async () => {
+    await seed()
+    await d.as('admin')
+    await d.setWasherActive('pedro', false)
+    await d.as('operator')
+    await assert.rejects(() => d.recordTillPayment(KEY, pay(100)), code('not_found'))
+  })
+
+  test('plan example: 20000 payment with base 50000 and 25000 cash sales -> expected 55000', async () => {
+    await d.reset(); await d.as('operator')
+    await d.openShift({ openingCash: 50000 })
+    // juan 50% of 25000 is 12500 per sale: two sales earn the 20000 to pay
+    for (const [plate, paymentMethod] of [['AAA11A', 'cash'], ['BBB22B', 'qr']]) {
+      const o = await d.createOrder({ id: randomUUID(), plate, cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'juan' })
+      await d.finishOrder(o.id, { paymentMethod })
+    }
+    await d.recordTillPayment(KEY, pay(20000, { washerId: 'juan' }))
+    await d.at(AFTER_END)
+    assert.equal((await d.closeShift(KEY, { countedCash: 55000 })).expectedCash, 55000)
   })
 }

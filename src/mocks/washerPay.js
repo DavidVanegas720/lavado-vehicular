@@ -63,6 +63,15 @@ export async function recordTillPayment(shiftKey, input) {
 }
 
 const ADMIN = ['admin']
+/** Client id rule of C7/C17: bad id -> validation; same id by the same recorder -> the stored entry; another recorder -> invalid_state. */
+function replayOf(db, business, user, id) {
+  if (id === undefined) return null
+  if (!(typeof id === 'string' && CLIENT_ID.test(id))) throw coded('validation')
+  const prior = db.washerPayments.find((p) => p.id === id && p.businessId === business.id)
+  if (!prior) return null
+  if (prior.recordedBy !== user.uid) throw coded('invalid_state')
+  return structuredClone(prior)
+}
 const paidIn = (entries, washerId, periodKey) =>
   entries.filter((p) => p.washerId === washerId && p.type === 'payment' && p.periodKey === periodKey).reduce((s, p) => s + p.amount, 0)
 const earnedIn = (orders, washerId, period) =>
@@ -107,6 +116,8 @@ export async function getWasherLedger(washerId) {
 
 export async function recordOutsidePayment(input) {
   const { user, business, db } = authorize(ADMIN)
+  const replay = replayOf(db, business, user, input?.id)
+  if (replay) return replay
   const washer = db.catalogs[business.id].washers.find((w) => w.id === input?.washerId)
   if (!washer) throw coded('validation')
   const period = input.period ?? (washer.payFrequency === 'daily' ? 'current' : 'previous')
@@ -116,7 +127,7 @@ export async function recordOutsidePayment(input) {
   const businessDate = shiftOf(now(), business.shifts).businessDate
   const { periodKey } = (period === 'current' ? payPeriodOf : previousPeriodOf)(businessDate, washer.payFrequency)
   const payment = {
-    businessId: business.id, type: 'payment', washerId: washer.id, washerName: washer.name,
+    ...(input.id && { id: input.id }), businessId: business.id, type: 'payment', washerId: washer.id, washerName: washer.name,
     payFrequency: washer.payFrequency, periodKey, amount: input.amount, source: 'outside', shiftKey: null,
     businessDate, paidAt: now(), recordedBy: user.uid, note: typeof input.note === 'string' ? input.note.trim() : '',
   }
@@ -126,13 +137,15 @@ export async function recordOutsidePayment(input) {
 
 export async function recordCorrection(input) {
   const { user, business, db } = authorize(ADMIN)
+  const replay = replayOf(db, business, user, input?.id)
+  if (replay) return replay
   const washer = db.catalogs[business.id].washers.find((w) => w.id === input?.washerId)
   if (!washer) throw coded('not_found')
   if (!Number.isInteger(input.amount) || input.amount === 0) throw coded('validation')
   const reason = typeof input.reason === 'string' ? input.reason.trim() : ''
   if (reason.length < 1 || reason.length > 200) throw coded('validation')
   const entry = {
-    businessId: business.id, type: 'correction', washerId: washer.id, washerName: washer.name,
+    ...(input.id && { id: input.id }), businessId: business.id, type: 'correction', washerId: washer.id, washerName: washer.name,
     payFrequency: washer.payFrequency, periodKey: null, amount: input.amount, source: 'correction', shiftKey: null,
     businessDate: shiftOf(now(), business.shifts).businessDate, paidAt: now(), recordedBy: user.uid, reason,
   }

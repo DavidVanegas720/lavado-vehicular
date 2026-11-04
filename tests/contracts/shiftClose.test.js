@@ -2,7 +2,7 @@ import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
 import {
-  getShiftStatus, openShift, closeShift, reopenShift, getClosePreview, listShiftInstances, getShiftInstance,
+  getShiftStatus, openShift, closeShift, reopenShift, getClosePreview,
 } from '../../src/mocks/shifts.js'
 import { createOrder, finishOrder, cancelOrder } from '../../src/mocks/orders.js'
 
@@ -39,21 +39,6 @@ async function seedInstance() {
   return { o1, o6 }
 }
 
-test('totals per washer, method and owner share; order at 01:00 stays in the 18->12 instance', async () => {
-  const { o6 } = await seedInstance()
-  assert.equal(o6.shiftKey, KEY)
-  setMockNow(AFTER_END)
-  await signIn('laura')
-  const close = await closeShift(KEY, { countedCash: 170000 })
-  const t = close.totals
-  assert.deepEqual(t.salesByMethod, { cash: 75000, qr: 18000 })
-  assert.equal(t.sales, 93000)
-  assert.deepEqual(t.washerPay, { pedro: { name: 'Pedro', amount: 20000 }, juan: { name: 'Juan', amount: 34000 } })
-  assert.equal(t.ownerShare, 39000)
-  assert.equal(close.expectedCash, 175000)
-  assert.equal(close.difference, -5000)
-})
-
 test('preview is blind and lists unfinished orders with the creator name', async () => {
   await signIn('carlos')
   await openShift({ openingCash: 5000 })
@@ -80,41 +65,3 @@ test('a done order is final on a closed and a reopened instance', async () => {
   await signIn('ana')
   await assert.rejects(async () => cancelOrder(o1.id, { reason: 'x' }), code('invalid_state'))
 })
-
-test('admin reads: instances newest first with lateMs, detail with names', async () => {
-  await seedInstance()
-  setMockNow(AFTER_END)
-  await signIn('laura')
-  await closeShift(KEY, { countedCash: 75000 })
-  await openShift({ openingCash: 0 }) // 12:30 Bogota -> shift A of Oct 30
-  await signIn('ana')
-  const list = await listShiftInstances()
-  assert.deepEqual(list.map((i) => [i.shiftKey, i.state]), [['2026-10-30_A', 'open'], [KEY, 'closed']])
-  assert.equal(list[0].businessDate, '2026-10-30')
-  assert.equal(list[1].lateMs, 0)
-  setMockNow(new Date('2026-10-30T20:00:00Z')) // 15:00 Bogota, A ends 18:00 Bogota (23:00Z)
-  assert.equal((await listShiftInstances())[0].lateMs, 0)
-  setMockNow(new Date('2026-10-31T00:00:00Z'))
-  assert.equal((await listShiftInstances())[0].lateMs, 3600000)
-  const d = await getShiftInstance(KEY)
-  assert.deepEqual(d.events.map((e) => [e.type, e.byName]), [['open', 'Carlos'], ['close', 'Laura']])
-  assert.equal(d.latestClose.totals.sales, 93000)
-  assert.equal(d.orders.length, 6)
-  assert.ok(d.orders.every((o) => o.createdByName === 'Carlos'))
-  await assert.rejects(async () => getShiftInstance('nope'), code('not_found'))
-})
-
-test('operators forbidden on admin reads; admin and superadmin forbidden on operator calls', async () => {
-  await signIn('carlos')
-  await assert.rejects(async () => listShiftInstances(), code('forbidden'))
-  await assert.rejects(async () => getShiftInstance(KEY), code('forbidden'))
-  for (const who of ['ana', 'david']) {
-    await signIn(who)
-    await assert.rejects(async () => openShift({ openingCash: 0 }), code('forbidden'))
-    await assert.rejects(async () => closeShift(KEY, { countedCash: 0 }), code('forbidden'))
-    await assert.rejects(async () => reopenShift(KEY, { reason: 'x' }), code('forbidden'))
-    await assert.rejects(async () => getClosePreview(KEY), code('forbidden'))
-  }
-  await assert.rejects(async () => listShiftInstances(), code('forbidden')) // superadmin is not admin
-})
-

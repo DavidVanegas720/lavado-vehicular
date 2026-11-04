@@ -37,6 +37,13 @@ export async function signIn(userId) {
   return publicUser(user)
 }
 
+/** Email sign-in for the shared cases (no password in the mock). Unknown email -> unauthenticated. */
+export async function signInWithEmail(email) {
+  const user = db.users.find((u) => u.email === email)
+  if (!user) throw coded('unauthenticated')
+  return signIn(user.id)
+}
+
 export const signOut = async () => { uid = null }
 
 export async function getSession() {
