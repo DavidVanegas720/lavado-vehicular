@@ -1,6 +1,7 @@
 import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { signIn, resetMock, setMockNow } from '../../src/mocks/session.js'
+import { signIn, getSession, resetMock, setMockNow } from '../../src/mocks/session.js'
+import shiftsOpenCases from './cases/shiftsOpen.js'
 import { getShiftStatus, openShift, closeShift, reopenShift } from '../../src/services/shifts.js'
 import { createOrder, finishOrder, cancelOrder } from '../../src/services/orders.js'
 import { listShiftEvents } from '../../src/mocks/shifts.js'
@@ -106,4 +107,13 @@ test('an unclosed ended instance does not block opening the next', async () => {
   await openShift({ openingCash: 10000 })
   assert.equal((await getShiftStatus()).current.shiftKey, '2026-10-30_unico')
   assert.equal((await getShiftStatus()).current.state, 'open')
+})
+
+// Shared cases (also run against the real backend by functions/src/endpoints.test.ts)
+const MOCK_USERS = { operator: 'carlos', admin: 'ana', superadmin: 'david', blockedOperator: 'bloqueado' }
+shiftsOpenCases({
+  reset: async () => { resetMock(); setMockNow(DAY1) },
+  as: (key) => signIn(MOCK_USERS[key]),
+  sessionGet: () => getSession(),
+  openShift: (input) => openShift(input),
 })

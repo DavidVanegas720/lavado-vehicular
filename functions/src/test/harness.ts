@@ -11,7 +11,7 @@ const PASSWORD = 'test-password-1';
 const USERS: Record<string, [string | null, string | null, boolean]> = {
   adminA: ['A', 'admin', true], operatorA: ['A', 'operator', true], inactiveA: ['A', 'operator', false],
   adminB: ['B', 'admin', true], operatorB: ['B', 'operator', true],
-  adminC: ['C', 'admin', true], superadmin: [null, 'superadmin', true], stray: [null, null, true],
+  adminC: ['C', 'admin', true], operatorC: ['C', 'operator', true], superadmin: [null, 'superadmin', true], stray: [null, null, true],
 };
 const BUSINESSES: Record<string, [string, string]> = { A: ['Negocio A', 'active'], B: [SENTINEL, 'active'], C: ['Negocio C', 'blocked'] };
 
@@ -34,7 +34,7 @@ export async function start() {
   for (const [k, [name, status]] of Object.entries(BUSINESSES)) {
     const ref = db.collection('businesses').doc();
     ids[k] = ref.id;
-    await ref.set({ name, status, enabledVehicleTypes: ['moto'] });
+    await ref.set({ name, status, enabledVehicleTypes: ['motorcycle'], shifts: [{ id: 'unico', name: 'Turno único', startHour: 6, endHour: 6 }] }); // one 24 h shift: opens at any real time
   }
   const tokens: Record<string, string> = {};
   for (const [k, [b, role, active]] of Object.entries(USERS)) {

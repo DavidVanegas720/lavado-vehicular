@@ -9,7 +9,7 @@
   "scripts": {
     "prebuild": "rm -rf src/domain && cp -R ../src/domain src/domain",
     "build": "tsc",
-    "test": "npm run build && node --test \"lib/**/*.test.js\""
+    "test": "npm run build && node --test --test-concurrency=1 \"lib/**/*.test.js\""
   },
   "keywords": [],
   "author": "",

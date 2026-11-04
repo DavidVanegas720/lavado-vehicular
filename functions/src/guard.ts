@@ -18,7 +18,7 @@ export function decide(
 ): string | null {
   if (!meta.roles?.length) return 'forbidden';
   if (!claims.role) return 'forbidden';
-  if (claims.role === 'superadmin') return null;
+  if (claims.role === 'superadmin') return meta.roles.includes('superadmin') ? null : 'forbidden';
   if (!business || !member) return 'forbidden';
   if (member.active !== true) return 'forbidden';
   if (business.status === 'blocked' && !meta.allowBlocked) return 'business_blocked';
