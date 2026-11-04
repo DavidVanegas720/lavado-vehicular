@@ -26,6 +26,7 @@ export async function apiDriver() {
     reset: async () => { await s?.close(); s = await start(); now = DAY1; },
     as: async (k: string) => { who = k; },
     at: (d: Date) => { now = d; },
+    idOf: async (k: string) => s!.uids[KEYS[k]],
     close: async () => { await s?.close(); },
     sessionGet: () => send('session/get'),
     ...makeApi(send),

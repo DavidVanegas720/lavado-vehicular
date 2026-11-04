@@ -16,6 +16,8 @@ if (emulators) {
   core(d);
   const { default: till } = await import('../../tests/contracts/cases/tillPay.js' as string);
   till(d);
+  const { default: catalog } = await import('../../tests/contracts/cases/catalog.js' as string);
+  catalog(d);
   test.after(() => d.close());
 }
 
@@ -124,5 +126,39 @@ test('two parallel payments of the whole balance: one 200, one validation; store
     const docs = (await db.collection(`businesses/${s.ids.A}/washerPayments`).get()).docs;
     assert.equal(docs.length, 1);
     assert.ok(Number.isInteger(docs[0].data().amount));
+  } finally { await s.close(); }
+});
+
+// Catalog races (criterion 7): the transaction reads the whole catalog, so the second writer sees the first.
+const bodyOf = { prices: { basica: 1000, full: 2000 }, vehicleType: 'motorcycle' };
+const catalogCall = (s: Awaited<ReturnType<typeof start>>, path: string, body: unknown) => s.call('catalog/' + path, s.tokens.adminA, body);
+const countOf = async (s: Awaited<ReturnType<typeof start>>, c: string) => (await db.collection(`businesses/${s.ids.A}/${c}`).get()).size;
+
+test('two parallel createCategory with overlapping ranges: one 200, one cc_overlap, one new doc', { skip }, async () => {
+  const s = await start();
+  try {
+    const before = await countOf(s, 'categories');
+    const rs = await Promise.all([1, 2].map((i) => catalogCall(s, 'createCategory', { name: 'Cat ' + i, minCc: 2001, maxCc: 3000, ...bodyOf })));
+    assert.deepEqual(rs.map((r) => r.status).sort(), [200, 409]);
+    assert.deepEqual(await (rs[0].status === 409 ? rs[0] : rs[1]).json(), { code: 'cc_overlap' });
+    assert.equal(await countOf(s, 'categories'), before + 1);
+  } finally { await s.close(); }
+});
+
+test('parallel setCategoryActive(true) of two overlapping inactive categories: at most one active', { skip }, async () => {
+  const s = await start();
+  try {
+    const ids: string[] = [];
+    for (const [i, [min, max]] of [[2001, 2500], [2400, 3000]].entries()) {
+      const c = (await (await catalogCall(s, 'createCategory', { name: 'X' + i, minCc: min, maxCc: max, ...bodyOf })).json()) as { id: string };
+      // the second one overlaps the first, so park the first before creating it
+      if (i === 0) await catalogCall(s, 'setCategoryActive', { id: c.id, active: false });
+      ids.push(c.id);
+    }
+    await catalogCall(s, 'setCategoryActive', { id: ids[1], active: false });
+    const rs = await Promise.all(ids.map((id) => catalogCall(s, 'setCategoryActive', { id, active: true })));
+    assert.equal(rs.filter((r) => r.status === 200).length, 1);
+    const active = (await db.collection(`businesses/${s.ids.A}/categories`).where('id', 'in', ids).get()).docs.filter((d) => d.data().active);
+    assert.equal(active.length, 1);
   } finally { await s.close(); }
 });

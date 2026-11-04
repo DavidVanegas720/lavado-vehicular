@@ -51,6 +51,8 @@ test('2c. the route list and each route\'s roles are exactly the plan\'s (10-p8 
     'catalog/list': ['admin', 'operator'], 'orders/create': ['operator'], 'orders/finish': ['admin', 'operator'],
     'orders/cancel': ['admin', 'operator'], 'orders/listShift': ['operator'],
     'washerPay/listTillPayables': ['operator'], 'washerPay/recordTillPayment': ['operator'],
+    ...Object.fromEntries(['createCategory', 'updateCategory', 'setCategoryActive', 'createWashType', 'updateWashType', 'setWashTypeActive', 'setPrice',
+      'createWasher', 'updateWasher', 'setWasherActive'].map((n) => ['catalog/' + n, ['admin']])),
   };
   assert.deepEqual(routes.map((r) => r.path).sort(), Object.keys(plan).sort());
   for (const r of routes) assert.deepEqual([...Reflect.getMetadata('roles', r.handler)].sort(), plan[r.path], r.path);

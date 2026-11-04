@@ -78,7 +78,7 @@ export async function start() {
       },
       body: JSON.stringify(body),
     });
-  return { url, ids, tokens, call, close: () => app.close() };
+  return { url, ids, uids, tokens, call, close: () => app.close() };
 }
 
 // Every document under a path, recursively, as one comparable object.
