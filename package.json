@@ -4,10 +4,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "VITE_MOCK=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test \"tests/**/*.test.js\"",
-    "test:api": "firebase emulators:exec --only auth,firestore --project demo-lavadero \"npm test --prefix functions\""
+    "test:api": "firebase emulators:exec --only auth,firestore --project demo-lavadero \"npm test --prefix functions\"",
+    "emulators": "firebase emulators:start --only auth,firestore,functions --project demo-lavadero",
+    "seed:dev": "npm run build --prefix functions && FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=demo-lavadero node functions/lib/test/seedDev.js"
   },
   "dependencies": {
     "@lucide/vue": "1.57.0",

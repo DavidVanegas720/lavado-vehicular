@@ -1,30 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { coded } from './errors.js';
 import { db } from './firebase.js';
 import { emulators, start } from './test/harness.js';
+import { apiDriver } from './test/driver.js';
 
 const skip = emulators ? false : 'needs the emulators (npm run test:api)';
-const KEYS: Record<string, string> = { operator: 'operatorA', admin: 'adminA', superadmin: 'superadmin', blockedOperator: 'operatorC' };
 
 // Shared contract cases, API driver. Runtime import so tsc does not compile the .js file.
 if (emulators) {
-  let s: Awaited<ReturnType<typeof start>> | undefined;
-  let who = '';
-  const send = async (path: string, body: unknown = {}) => {
-    const r = await s!.call(path, s!.tokens[KEYS[who]], body);
-    const json = await r.json();
-    if (!r.ok) throw coded((json as { code: string }).code);
-    return json;
-  };
+  const d = await apiDriver();
   const { default: cases } = await import('../../tests/contracts/cases/shiftsOpen.js' as string);
-  cases({
-    reset: async () => { await s?.close(); s = await start(); },
-    as: async (k: string) => { who = k; },
-    sessionGet: () => send('session/get'),
-    openShift: (input: unknown) => send('shifts/open', input),
-  });
-  test.after(() => s?.close());
+  cases(d);
+  test.after(() => d.close());
 }
 
 test('no token and a token signed by nobody -> 401', { skip }, async () => {
