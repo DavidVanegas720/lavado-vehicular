@@ -187,8 +187,6 @@ export async function updateWasher(id, patch = {}) {
   return structuredClone(washer)
 }
 
-export const setWasherCommissionBp = async (id, bp) => updateWasher(id, { commissionBp: bp })
-
 export async function setWasherActive(id, active) {
   const { business, db } = authorize(ADMIN)
   const washer = find(db.catalogs[business.id].washers, id)

@@ -122,7 +122,7 @@ test('operators are forbidden on every catalog write', async () => {
     () => cat.createWasher({ name: 'x', commissionBp: 1 }),
     () => cat.updateWasher('pedro', { name: 'x' }),
     () => cat.setWasherActive('pedro', false),
-    () => cat.setWasherCommissionBp('pedro', 1),
+    () => cat.updateWasher('pedro', { commissionBp: 1 }),
   ]
   await signIn('carlos')
   for (const w of writes) await assert.rejects(w, code('forbidden'))

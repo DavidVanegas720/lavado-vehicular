@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import {
-  listCategories, listWashTypes, listPrices,
+  listCatalog,
   createCategory, updateCategory, setCategoryActive,
   createWashType, updateWashType, setWashTypeActive, setPrice,
 } from '../services/catalog.js'
@@ -38,9 +38,10 @@ async function load() {
   const enabled = (await getSession())?.enabledVehicleTypes ?? ['motorcycle']
   both.value = enabled.length > 1
   for (const x of [newCat, newType]) if (!enabled.includes(x.vehicleType)) x.vehicleType = enabled[0]
-  cats.value = await listCategories()
-  types.value = await listWashTypes()
-  prices.value = await listPrices()
+  const all = await listCatalog()
+  cats.value = all.categories
+  types.value = all.washTypes
+  prices.value = all.prices
   for (const c of cats.value) for (const t of types.value) {
     const p = priceOf(c.id, t.id)
     priceText[key(c.id, t.id)] ??= p === undefined ? '' : formatCOP(p)

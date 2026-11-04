@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { listWashers, createWasher, updateWasher, setWasherActive } from '../services/catalog.js'
+import { listCatalog, createWasher, updateWasher, setWasherActive } from '../services/catalog.js'
 import { formatPercent, parsePercent } from '../domain/commission.js'
 import { PAY_FREQUENCIES } from '../domain/catalog.js'
 import { errorText } from './messages.js'
@@ -23,7 +23,7 @@ const busy = ref(false)
 
 const when = (d) => new Date(d).toLocaleString('es-CO', { timeZone: 'America/Bogota' })
 
-async function load() { washers.value = await listWashers() }
+async function load() { washers.value = (await listCatalog()).washers }
 
 // Runs an action: clears messages, reloads on success, shows errorText on failure. Returns true on success.
 async function run(fn, ok) {
