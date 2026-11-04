@@ -6,7 +6,7 @@ import { shiftOf, shiftState } from './domain/shift.js';
 import { shiftTotals, expectedCash } from './domain/order.js';
 
 // The clock: an x-test-now header is honored only on the emulator (10-p8 R5 option a); in production it is ignored.
-const clock = (req: { headers: Record<string, string | string[] | undefined> }) => {
+export const clock = (req: { headers: Record<string, string | string[] | undefined> }) => {
   const h = req.headers['x-test-now'];
   if (!h || !process.env.FIRESTORE_EMULATOR_HOST) return new Date();
   const d = new Date(String(h));
@@ -14,7 +14,7 @@ const clock = (req: { headers: Record<string, string | string[] | undefined> }) 
   return d;
 };
 
-type Ctx_ = { uid: string; role?: string; businessId: string; business: { shifts: Parameters<typeof shiftOf>[1] } };
+export type Ctx_ = { uid: string; role?: string; businessId: string; business: { shifts: Parameters<typeof shiftOf>[1] } };
 
 async function openShift(ctx: Ctx_, openingCash: unknown, now: Date) {
   if (!Number.isInteger(openingCash) || (openingCash as number) < 0) throw coded('validation');

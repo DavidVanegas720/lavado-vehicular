@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { db } from './firebase.js';
 import { emulators, start } from './test/harness.js';
 import { apiDriver } from './test/driver.js';
@@ -11,13 +12,8 @@ if (emulators) {
   const d = await apiDriver();
   const { default: cases } = await import('../../tests/contracts/cases/shiftsOpen.js' as string);
   cases(d);
-  // S2: only the coreFlow cases that need no order route. shortcut: titles listed by hand; S3 runs the whole file.
-  const NO_ORDER = ['an unclosed ended instance is listed and the next one opens'];
-  const path = new URL('../../tests/contracts/cases/coreFlow.js', import.meta.url);
-  const src = (await import('node:fs')).readFileSync(path, 'utf8').replace(
-    "import test from 'node:test'",
-    `import raw from 'node:test'; const test = (n, ...a) => (${JSON.stringify(NO_ORDER)}.includes(n) ? raw(n, ...a) : undefined)`);
-  (await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'))).default(d);
+  const { default: core } = await import('../../tests/contracts/cases/coreFlow.js' as string);
+  core(d);
   test.after(() => d.close());
 }
 
@@ -74,5 +70,40 @@ test('two parallel closes after the end: one 200, one invalid_state, one close d
     const rs = await Promise.all([close(), close()]);
     assert.deepEqual(rs.map((r) => r.status).sort(), [200, 409]);
     assert.equal((await db.collection(`businesses/${s.ids.A}/shiftEvents`).where('type', '==', 'close').get()).size, 1);
+  } finally { await s.close(); }
+});
+
+test('orders/create: missing id -> validation; 5 parallel creates with one id -> one order, one wash counted', { skip }, async () => {
+  const s = await start();
+  try {
+    const call = (path: string, body: unknown, now: string) => s.call(path, s.tokens.operatorA, body, new Date(now));
+    assert.equal((await call('shifts/open', { openingCash: 0 }, '2026-10-29T15:00:00Z')).status, 200);
+    const o = { plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' };
+    assert.deepEqual(await (await call('orders/create', o, '2026-10-29T15:00:00Z')).json(), { code: 'validation' });
+    const id = randomUUID();
+    const rs = await Promise.all([1, 2, 3, 4, 5].map(() => call('orders/create', { id, ...o }, '2026-10-29T15:00:00Z')));
+    assert.deepEqual(rs.map((r) => r.status), [200, 200, 200, 200, 200]);
+    assert.equal((await db.collection(`businesses/${s.ids.A}/orders`).get()).size, 1);
+    assert.equal((await db.doc(`businesses/${s.ids.A}/vehicles/ABC12D`).get()).data()!.totalWashes, 1);
+  } finally { await s.close(); }
+});
+
+test('orders/create racing shifts/close: never a stored close with an in_progress order', { skip }, async () => {
+  const s = await start();
+  try {
+    const call = (path: string, body: unknown, now: string) => s.call(path, s.tokens.operatorA, body, new Date(now));
+    for (let i = 0; i < 5; i++) {
+      const iso = (n: number) => new Date(Date.UTC(2026, 9, 29 + n)).toISOString().slice(0, 10);
+      const day = iso(i);
+      const key = `${day}_unico`;
+      assert.equal((await call('shifts/open', { openingCash: 0 }, `${day}T15:00:00Z`)).status, 200);
+      const create = call('orders/create', { id: randomUUID(), plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' }, `${day}T16:00:00Z`);
+      const close = call('shifts/close', { shiftKey: key, countedCash: 0 }, `${iso(i + 1)}T12:00:00Z`);
+      await Promise.all([create, close]);
+      const base = `businesses/${s.ids.A}`;
+      const closes = (await db.collection(`${base}/shiftEvents`).where('shiftKey', '==', key).where('type', '==', 'close').get()).size;
+      const open = (await db.collection(`${base}/orders`).where('shiftKey', '==', key).where('status', '==', 'in_progress').get()).size;
+      assert.ok(!(closes && open), `round ${i}: close=${closes} in_progress=${open}`);
+    }
   } finally { await s.close(); }
 });
