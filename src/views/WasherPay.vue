@@ -26,6 +26,9 @@ const fix = reactive({ washerId: '', amount: '', minus: false, reason: '' })
 const flow = reactive({ periodType: 'daily', businessDate: '' })
 const cash = ref(null)
 const busy = ref(false)
+// same rule as ShiftClose and NewWash: a retried payment or correction replays, never doubles
+const payId = ref(crypto.randomUUID())
+const fixId = ref(crypto.randomUUID())
 
 const when = (d) => new Date(d).toLocaleString('es-CO', { timeZone: 'America/Bogota' })
 
@@ -66,8 +69,9 @@ async function submitPay() {
   success.value = ''
   const amount = amountOrError(pay.amount)
   if (amount === null) return
-  if (await run(async () => { await recordOutsidePayment({ washerId: pay.washerId, amount, period: pay.period, note: pay.note }); await reload() }, 'Pago registrado.')) {
+  if (await run(async () => { await recordOutsidePayment({ id: payId.value, washerId: pay.washerId, amount, period: pay.period, note: pay.note }); await reload() }, 'Pago registrado.')) {
     Object.assign(pay, { amount: '', note: '' })
+    payId.value = crypto.randomUUID()
   }
 }
 
@@ -76,8 +80,9 @@ async function submitFix() {
   success.value = ''
   const n = amountOrError(fix.amount)
   if (n === null) return
-  if (await run(async () => { await recordCorrection({ washerId: fix.washerId, amount: fix.minus ? -n : n, reason: fix.reason }); await reload() }, 'Corrección registrada.')) {
+  if (await run(async () => { await recordCorrection({ id: fixId.value, washerId: fix.washerId, amount: fix.minus ? -n : n, reason: fix.reason }); await reload() }, 'Corrección registrada.')) {
     Object.assign(fix, { amount: '', minus: false, reason: '' })
+    fixId.value = crypto.randomUUID()
   }
 }
 
