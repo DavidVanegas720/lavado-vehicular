@@ -8,3 +8,4 @@ docs/
 functions/lib
 functions/src/domain
 firestore-debug.log
+firebase-debug.log

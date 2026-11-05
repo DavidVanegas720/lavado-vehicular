@@ -88,7 +88,7 @@ export default function superadminCases(d) {
   test('shifts with a gap -> validation; valid list changes only new orders', async () => {
     await d.reset(); await d.as('superadmin')
     const b = await find(A())
-    await assert.rejects(() => d.updateBusiness(A(), edit(b, [{ id: 'a', name: 'A', startHour: 6, endHour: 12 }])), code('validation'))
+    await assert.rejects(() => d.updateBusiness(A(), edit(b, [{ id: 'unico', name: 'Único', startHour: 6, endHour: 12 }])), code('validation'))
     await d.as('operator'); await d.openShift({ openingCash: 0 }); const old = await d.createOrder(wash())
     await d.as('superadmin')
     const saved = await d.updateBusiness(A(), edit(b, two))
