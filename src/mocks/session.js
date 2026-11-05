@@ -1,7 +1,7 @@
 import { createSeed } from './seed.js'
 import { coded } from './errors.js'
 
-let db = createSeed()
+let db = /* @__PURE__ */ createSeed() // pure: lets the build drop the mock seed when MOCK is off
 let uid = null
 let fixedNow = null
 

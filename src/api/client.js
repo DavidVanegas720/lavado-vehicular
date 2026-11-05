@@ -4,7 +4,7 @@ import { makeApi } from './endpoints.js'
 import { coded } from '../mocks/errors.js'
 
 // The only place that reads the mode flag and the only place that fetches.
-export const MOCK = import.meta.env?.VITE_MOCK === '1'
+export const MOCK = import.meta.env.VITE_MOCK === '1'
 
 // Dev: emulator config. Build: public web config from VITE_FIREBASE_* (.env.prod, see .env.example).
 const config = import.meta.env.DEV
