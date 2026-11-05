@@ -1,17 +1,53 @@
 {
-  "functions": { "source": "functions", "runtime": "nodejs22" },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22",
+    "predeploy": "npm --prefix \"$RESOURCE_DIR\" run build",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local",
+      "lib/test/**",
+      "lib/scripts/**",
+      "lib/**/*.test.js"
+    ]
+  },
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
   "hosting": {
     "public": "dist",
+    "predeploy": "npm run build -- --mode prod",
     "rewrites": [
       { "source": "/api/**", "function": { "functionId": "api", "region": "us-east1" } },
       { "source": "**", "destination": "/index.html" }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "X-Frame-Options", "value": "DENY" },
+          { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" },
+          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      }
     ]
   },
   "emulators": {
     "auth": { "port": 9099 },
     "firestore": { "port": 8080 },
     "functions": { "port": 5001 },
+    "hosting": { "port": 5002 },
     "ui": { "enabled": false }
   }
 }
