@@ -21,6 +21,8 @@ const MESSAGES = {
   'auth/invalid-credential': 'Correo o contraseña incorrectos.',
   'auth/wrong-password': 'Correo o contraseña incorrectos.',
   'auth/user-not-found': 'Correo o contraseña incorrectos.',
+  'auth/user-disabled': 'Tu usuario está desactivado. Habla con el administrador.',
+  forbidden: 'Tu usuario está desactivado. Habla con el administrador.',
   'auth/too-many-requests': 'Demasiados intentos. Esperá unos minutos.',
 }
 

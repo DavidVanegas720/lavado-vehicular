@@ -8,6 +8,7 @@ export const MESSAGES = {
   price_missing: 'Falta el precio de alguna combinación. Completá los precios.',
   cc_overlap: 'Ese rango de cilindraje se cruza con otra categoría activa.',
   validation: 'Escribí una placa válida (letras y números, 2 a 10 caracteres).',
+  email_taken: 'Ese correo ya tiene una cuenta.',
   not_found: 'Ese registro ya no existe. Actualizamos la lista.',
 }
 

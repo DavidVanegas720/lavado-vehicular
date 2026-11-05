@@ -14,6 +14,8 @@ const ops = ref([])
 const error = ref('')
 const success = ref('')
 const newName = ref('')
+const newEmail = ref('')
+const newPassword = ref('')
 const edit = ref(null) // { id, name }
 const busy = ref(false)
 
@@ -32,7 +34,11 @@ async function run(fn, ok) {
 }
 
 async function add() {
-  if (await run(() => createOperator({ name: newName.value }), 'Operador creado.')) newName.value = ''
+  if (await run(() => createOperator({ name: newName.value, email: newEmail.value, password: newPassword.value }), 'Operador creado.')) {
+    newName.value = ''
+    newEmail.value = ''
+    newPassword.value = ''
+  }
 }
 
 async function save() {
@@ -60,6 +66,7 @@ onMounted(async () => { try { await load() } catch (e) { error.value = errorText
       </form>
       <template v-else>
         <p class="font-bold">{{ o.name }} <span class="font-normal">({{ o.active ? 'Activo' : 'Inactivo' }})</span></p>
+        <p v-if="o.email">{{ o.email }}</p>
         <div class="flex flex-wrap gap-2">
           <button type="button" :class="btn2" @click="edit = { id: o.id, name: o.name }">Editar<span class="sr-only"> {{ o.name }}</span></button>
           <button type="button" :class="btn2" @click="run(() => setOperatorActive(o.id, !o.active), o.active ? 'Operador desactivado.' : 'Operador reactivado.')">
@@ -74,6 +81,11 @@ onMounted(async () => { try { await load() } catch (e) { error.value = errorText
     <h2 class="font-bold">Nuevo operador</h2>
     <label for="no-n" class="block">Nombre</label>
     <input id="no-n" v-model="newName" type="text" maxlength="60" :class="input" />
+    <label for="no-e" class="block">Correo</label>
+    <input id="no-e" v-model="newEmail" type="email" autocomplete="off" :class="input" />
+    <label for="no-p" class="block">Contraseña</label>
+    <input id="no-p" v-model="newPassword" type="password" autocomplete="new-password" aria-describedby="no-p-h" :class="input" />
+    <p id="no-p-h" class="text-sm">Mínimo 8 caracteres.</p>
     <button type="submit" :disabled="busy" :class="btn">Crear operador</button>
   </form>
 </template>

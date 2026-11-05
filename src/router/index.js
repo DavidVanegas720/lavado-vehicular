@@ -19,8 +19,8 @@ import PlaceholderView from '../views/PlaceholderView.vue'
 import { MOCK } from '../api/client.js'
 
 const real = { '/new-wash': NewWash, '/my-orders': MyOrders, '/shift-close': ShiftClose, '/shifts': ShiftsAdmin, '/catalog': CatalogAdmin, '/washers': WashersAdmin, '/operators': OperatorsAdmin, '/plate-history': PlateHistory, '/washer-pay': WasherPay, '/businesses': BusinessesView }
-// shortcut: admin and superadmin screens stay on the mock until P10/P11; use npm run dev:mock
-const onApi = (path) => MOCK || NAV.operator.some((e) => e.path === path)
+// shortcut: superadmin screens stay on the mock until P11; use npm run dev:mock
+const onApi = (path) => MOCK || NAV.operator.some((e) => e.path === path) || NAV.admin.some((e) => e.path === path)
 const paths = [...new Set(Object.values(NAV).flat().map((e) => e.path))]
 
 const router = createRouter({

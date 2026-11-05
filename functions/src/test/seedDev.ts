@@ -30,7 +30,7 @@ async function main() {
   const done = { ...order, ...finishFields(order, { paymentMethod: 'cash' }, operator, new Date(orderAt.getTime() + HOUR / 2)) };
   await biz.collection('orders').doc('seed-order').set(done);
   console.log(`dev password: ${DEV_PASSWORD}`);
-  for (const k of Object.keys(uids).filter((k) => k.startsWith('operator'))) console.log(`${k}@test.local`);
+  for (const k of Object.keys(uids).filter((k) => k.startsWith('operator') || k.startsWith('admin'))) console.log(`${k}@test.local`);
 }
 
 main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });
