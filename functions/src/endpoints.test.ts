@@ -20,6 +20,10 @@ if (emulators) {
   catalog(d);
   const { default: operators } = await import('../../tests/contracts/cases/operators.js' as string);
   operators(d);
+  const { default: adminShifts } = await import('../../tests/contracts/cases/adminShifts.js' as string);
+  adminShifts(d);
+  const { default: history } = await import('../../tests/contracts/cases/history.js' as string);
+  history(d);
   test.after(() => d.close());
 }
 

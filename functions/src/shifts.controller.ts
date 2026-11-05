@@ -97,6 +97,35 @@ async function status(ctx: Ctx_, now: Date) {
   };
 }
 
+// Admin: every instance with events, newest first. lateMs = time past endsAt while not closed.
+// shortcut: all events, paginate when the business passes ~5k events
+async function listInstances(ctx: Ctx_, now: Date) {
+  const snap = await tenant(ctx).collection('shiftEvents').get();
+  const evs = snap.docs.map((d) => plain(d.data())).sort((a, b) => a.at - b.at || a.seq - b.seq);
+  return evs.filter((e) => e.type === 'open').map((o) => {
+    const state = shiftState(evs, o.shiftKey);
+    return {
+      shiftKey: o.shiftKey, shiftName: o.shiftName, businessDate: (o.shiftKey as string).split('_')[0], state, endsAt: o.endsAt,
+      lateMs: state === 'closed' ? 0 : Math.max(0, now.getTime() - o.endsAt.getTime()),
+    };
+  }).sort((a, b) => b.endsAt - a.endsAt);
+}
+
+async function getInstance(ctx: Ctx_, key: unknown) {
+  const i = await instance(ctx, shiftKeyOf(key), (q) => q.get());
+  if (!i.events.length) throw coded('not_found');
+  const ids = [...new Set([...i.events.map((e) => e.by), ...i.orders.map((o) => o.createdBy)] as string[])];
+  const names = new Map<string, string>();
+  for (const m of await db.getAll(...ids.map((id) => tenant(ctx).collection('members').doc(id)))) names.set(m.id, m.data()?.name);
+  const name = (id: string) => names.get(id) ?? id;
+  return {
+    events: i.events.map((e) => ({ ...e, byName: name(e.by) })),
+    latestClose: [...i.events].reverse().find((e) => e.type === 'close') ?? null,
+    orders: i.orders.map((o) => ({ ...o, createdByName: name(o.createdBy) })),
+    tillPayments: i.tillPayments.map((p) => ({ washerName: p.washerName, amount: p.amount })),
+  };
+}
+
 async function closePreview(ctx: Ctx_, key: unknown) {
   const i = await instance(ctx, shiftKeyOf(key), (q) => q.get());
   if (i.state !== 'open') throw coded('invalid_state');
@@ -145,6 +174,16 @@ export class ShiftsController {
   @HttpCode(200)
   @Roles('admin', 'operator')
   status(@Ctx() ctx: Ctx_, @Req() req: Req) { return status(ctx, clock(req)); }
+
+  @Post('listInstances')
+  @HttpCode(200)
+  @Roles('admin')
+  listInstances(@Ctx() ctx: Ctx_, @Req() req: Req) { return listInstances(ctx, clock(req)); }
+
+  @Post('getInstance')
+  @HttpCode(200)
+  @Roles('admin')
+  getInstance(@Ctx() ctx: Ctx_, @Body() b: { shiftKey?: unknown }) { return getInstance(ctx, b?.shiftKey); }
 
   @Post('closePreview')
   @HttpCode(200)
