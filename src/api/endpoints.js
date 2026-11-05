@@ -39,4 +39,13 @@ export const makeApi = (call) => ({
     call('washerPay/recordCorrection', { id: input?.id, washerId: input?.washerId, amount: input?.amount, reason: input?.reason }),
   getCashFlow: (input) => call('cashFlow/get', { periodType: input?.periodType, businessDate: input?.businessDate }),
   getPlateHistory: (plate) => call('history/getPlate', { plate }),
+  // P11 superadmin routes (businessId in the body)
+  listBusinesses: () => call('businesses/list', {}),
+  createBusiness: (input) => call('businesses/create', input),
+  updateBusiness: (id, input) => call('businesses/update', { businessId: id, ...input }),
+  setBusinessBlocked: (id, input) => call('businesses/setBlocked', { businessId: id, blocked: input?.blocked, reason: input?.reason }),
+  setAlertWindowDays: (n) => call('businesses/setAlertWindowDays', { days: n }),
+  listBillingPayments: (id) => call('businesses/listBillingPayments', { businessId: id }),
+  recordBillingPayment: (id, input) =>
+    call('businesses/recordBillingPayment', { businessId: id, id: input?.id, amount: input?.amount, periodMonth: input?.periodMonth, method: input?.method, note: input?.note, paidUntil: input?.paidUntil }),
 })
