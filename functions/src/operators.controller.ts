@@ -33,7 +33,7 @@ export function loginInput(b: Doc, min = 8) {
 }
 
 // E6: Auth user, then claims, then `write(uid)`; a failure after createUser removes the Auth user again.
-export async function createLogin<T>(email: string, password: string, claims: { role: string; businessId: string }, write: (uid: string) => Promise<T>) {
+export async function createLogin<T>(email: string, password: string, claims: { role: string; businessId?: string }, write: (uid: string) => Promise<T>) {
   let uid: string;
   try {
     uid = (await auth.createUser({ email, password })).uid;

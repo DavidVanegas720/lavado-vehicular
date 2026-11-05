@@ -328,3 +328,21 @@ test('businesses/create: Auth claims are role admin and the new business id; mem
     assert.equal(JSON.stringify(m).includes('clave-segura-1'), false);
   } finally { await s.close(); }
 });
+
+test('createSuperadmin: claims are exactly { role: superadmin }, it signs in and lists businesses; 11 chars -> validation; same email -> email_taken, first user unchanged', { skip }, async () => {
+  const { createSuperadmin } = await import('./scripts/createSuperadmin.js');
+  const s = await start();
+  try {
+    await createSuperadmin('Root@Test.local', 'clave-de-12-car');
+    const u = await auth.getUserByEmail('root@test.local');
+    assert.deepEqual(u.customClaims, { role: 'superadmin' });
+    const r = await s.call('businesses/list', await token('root@test.local', 'clave-de-12-car'));
+    assert.equal(r.status, 200);
+    await assert.rejects(createSuperadmin('corta@test.local', '12345678901'), { code: 'validation' });
+    await assert.rejects(auth.getUserByEmail('corta@test.local'), { code: 'auth/user-not-found' });
+    await assert.rejects(createSuperadmin('root@test.local', 'otra-clave-12-car'), { code: 'email_taken' });
+    const again = await auth.getUserByEmail('root@test.local');
+    assert.deepEqual([again.uid, again.customClaims], [u.uid, { role: 'superadmin' }]);
+    await token('root@test.local', 'clave-de-12-car'); // old password still works
+  } finally { await s.close(); }
+});
