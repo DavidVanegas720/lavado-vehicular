@@ -6,9 +6,18 @@ import { coded } from '../mocks/errors.js'
 // The only place that reads the mode flag and the only place that fetches.
 export const MOCK = import.meta.env?.VITE_MOCK === '1'
 
-// shortcut: production web config is added at P12 (public values)
-export const auth = getAuth(initializeApp({ projectId: 'demo-lavadero', apiKey: 'demo-key' }))
-if (import.meta.env?.DEV) connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+// Dev: emulator config. Build: public web config from VITE_FIREBASE_* (.env.prod, see .env.example).
+const config = import.meta.env.DEV
+  ? { projectId: 'demo-lavadero', apiKey: 'demo-key' }
+  : {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    }
+if (!config.apiKey && !MOCK) throw new Error('Missing VITE_FIREBASE_* config')
+export const auth = getAuth(initializeApp(config))
+if (import.meta.env.DEV) connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
 
 const ISO = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/
 const reviver = (_k, v) => (typeof v === 'string' && ISO.test(v) ? new Date(v) : v)
