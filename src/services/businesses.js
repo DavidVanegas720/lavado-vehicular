@@ -1,4 +1,7 @@
-export {
+import { MOCK, api } from '../api/client.js'
+import * as mock from '../mocks/businesses.js'
+
+export const {
   listBusinesses, createBusiness, updateBusiness, recordBillingPayment, listBillingPayments,
   setBusinessBlocked, setAlertWindowDays,
-} from '../mocks/businesses.js'
+} = MOCK ? mock : api

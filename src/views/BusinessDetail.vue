@@ -53,10 +53,12 @@ async function saveShifts() {
 }
 const addRow = () => f.shifts.push({ id: null, name: '', startHour: 0, endHour: 0, key: rowKey++ })
 const removeRow = (i) => f.shifts.splice(i, 1)
+// same rule as WasherPay: a retried payment replays, never doubles
+const payId = ref(crypto.randomUUID())
 async function register() {
-  await run(() => recordBillingPayment(props.businessId, { amount: parsePesos(pay.amount), periodMonth: pay.periodMonth, method: pay.method, note: pay.note, paidUntil: pay.paidUntil }), 'Pago registrado.',
+  await run(() => recordBillingPayment(props.businessId, { id: payId.value, amount: parsePesos(pay.amount), periodMonth: pay.periodMonth, method: pay.method, note: pay.note, paidUntil: pay.paidUntil }), 'Pago registrado.',
     { validation: 'Revisá el valor en pesos, el mes, el medio y la fecha.' })
-  if (!error.value) { pay.amount = ''; pay.note = '' }
+  if (!error.value) { pay.amount = ''; pay.note = ''; payId.value = crypto.randomUUID() }
 }
 const block = (blocked) => run(() => setBusinessBlocked(props.businessId, { blocked, reason: reason.value }), blocked ? 'Negocio bloqueado.' : 'Negocio desbloqueado.',
   { validation: 'Escribí el motivo (1 a 200 caracteres).' })
