@@ -87,12 +87,18 @@ test('3. an A user cannot read or change business B', { skip }, async () => {
   } finally { await s.close(); }
 });
 
-test('4. rules deny clients: GET and PATCH on a business doc are 403', { skip }, async () => {
+test('4. rules deny clients: GET and PATCH on a business doc are 403; blocked, root and car reads too', { skip }, async () => {
   const s = await start();
   try {
-    const u = `http://${process.env.FIRESTORE_EMULATOR_HOST}/v1/projects/${PROJECT}/databases/(default)/documents/businesses/${s.ids.A}`;
-    const headers = { authorization: `Bearer ${s.tokens.adminA}`, 'content-type': 'application/json' };
+    const base = `http://${process.env.FIRESTORE_EMULATOR_HOST}/v1/projects/${PROJECT}/databases/(default)/documents`;
+    const hdr = (who: string) => ({ authorization: `Bearer ${s.tokens[who]}`, 'content-type': 'application/json' });
+    const u = `${base}/businesses/${s.ids.A}`;
+    const headers = hdr('adminA');
     assert.equal((await fetch(u, { headers })).status, 403);
     assert.equal((await fetch(`${u}?updateMask.fieldPaths=name`, { method: 'PATCH', headers, body: JSON.stringify({ fields: { name: { stringValue: 'x' } } }) })).status, 403);
+    assert.equal((await fetch(`${base}/businesses/${s.ids.C}`, { headers: hdr('operatorC') })).status, 403);
+    assert.equal((await fetch(`${base}/platform/settings`, { headers: hdr('superadmin') })).status, 403);
+    assert.equal((await fetch(`${base}/businesses/${s.ids.B}/categories/p-auto`, { headers: hdr('operatorB') })).status, 403);
   } finally { await s.close(); }
 });
+

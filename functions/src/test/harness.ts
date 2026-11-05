@@ -14,7 +14,10 @@ const USERS: Record<string, [string | null, string | null, boolean]> = {
 };
 // member display names the shared operator cases expect (mock seed: Carlos, Laura)
 const NAMES: Record<string, string> = { operatorA: 'Carlos', operator2A: 'Laura' };
-const BUSINESSES: Record<string, [string, string]> = { A: ['Negocio A', 'active'], B: [SENTINEL, 'active'], C: ['Negocio C', 'blocked'] };
+// key -> [name, status, vehicle types, paidUntil]; the mock seed's billing picture at the drivers' clock (2026-10-29)
+const BUSINESSES: Record<string, [string, string, string[], string]> = {
+  A: ['Negocio A', 'active', ['motorcycle'], '2026-11-01'], B: [SENTINEL, 'active', ['motorcycle', 'car'], '2027-12-01'], C: ['Negocio C', 'blocked', ['motorcycle'], '2026-10-01'],
+};
 
 export async function clearAll() {
   await fetch(`http://${process.env.FIRESTORE_EMULATOR_HOST}/emulator/v1/projects/${PROJECT}/databases/(default)/documents`, { method: 'DELETE' });
@@ -36,22 +39,25 @@ export async function mockSeed(): Promise<any> {
   return (await import('../../../src/mocks/seed.js' as string)).createSeed();
 }
 
-// Writes businesses, users and business A's catalog (C16). Caller clears first. Returns ids and uids by key.
+// Writes businesses, users and the catalogs of A and B (C16, F11). Caller clears first. Returns ids and uids by key.
 export async function seed(password: string) {
   const ids: Record<string, string> = {};
-  for (const [k, [name, status]] of Object.entries(BUSINESSES)) {
+  for (const [k, [name, status, enabledVehicleTypes, paidUntil]] of Object.entries(BUSINESSES)) {
     const ref = db.collection('businesses').doc();
     ids[k] = ref.id;
-    await ref.set({ name, status, enabledVehicleTypes: ['motorcycle'], shifts: [{ id: 'unico', name: 'Turno único', startHour: 6, endHour: 6 }] }); // one 24 h shift: opens at any real time
+    const blocked = status === 'blocked' ? { blockedAt: new Date('2026-10-29T15:00:00Z'), blockedReason: 'Falta de pago' } : { blockedAt: null, blockedReason: null };
+    await ref.set({ name, status, ...blocked, enabledVehicleTypes, billing: { monthlyFee: 150000, paidUntil, lastPaymentAt: null }, shifts: [{ id: 'unico', name: 'Turno único', startHour: 6, endHour: 6 }] }); // one 24 h shift: opens at any real time
   }
-  const cat = (await mockSeed()).catalogs.medallo;
-  const biz = db.doc(`businesses/${ids.A}`);
-  const batch = db.batch();
-  for (const c of cat.categories) batch.set(biz.collection('categories').doc(c.id), c);
-  for (const w of cat.washTypes) batch.set(biz.collection('washTypes').doc(w.id), w);
-  for (const { commissionHistory, payFrequencyHistory, ...w } of cat.washers) batch.set(biz.collection('washers').doc(w.id), w);
-  for (const p of cat.prices) batch.set(biz.collection('prices').doc(`${p.categoryId}_${p.washTypeId}`), p);
-  await batch.commit();
+  const catalogs = (await mockSeed()).catalogs;
+  for (const [k, cat] of [['A', catalogs.medallo], ['B', catalogs.prueba]] as const) {
+    const biz = db.doc(`businesses/${ids[k]}`);
+    const batch = db.batch();
+    for (const c of cat.categories) batch.set(biz.collection('categories').doc(c.id), c);
+    for (const w of cat.washTypes) batch.set(biz.collection('washTypes').doc(w.id), w);
+    for (const { commissionHistory, payFrequencyHistory, ...w } of cat.washers) batch.set(biz.collection('washers').doc(w.id), w);
+    for (const p of cat.prices) batch.set(biz.collection('prices').doc(`${p.categoryId}_${p.washTypeId}`), p);
+    await batch.commit();
+  }
   const uids: Record<string, string> = {};
   for (const [k, [b, role, active]] of Object.entries(USERS)) {
     const { uid } = await auth.createUser({ email: `${k}@test.local`, password });

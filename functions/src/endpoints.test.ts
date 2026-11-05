@@ -26,6 +26,8 @@ if (emulators) {
   history(d);
   const { default: washerPayAdmin } = await import('../../tests/contracts/cases/washerPayAdmin.js' as string);
   washerPayAdmin(d);
+  const { default: cars } = await import('../../tests/contracts/cases/cars.js' as string);
+  cars(d);
   test.after(() => d.close());
 }
 

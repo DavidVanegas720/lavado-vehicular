@@ -5,7 +5,7 @@ import { start, token } from './harness.js';
 
 const DAY1 = new Date('2026-10-29T15:00:00Z'); // the mock driver's reset clock
 const KEYS: Record<string, string> = {
-  operator: 'operatorA', operator2: 'operator2A', admin: 'adminA', superadmin: 'superadmin',
+  operator: 'operatorA', operator2: 'operator2A', admin: 'adminA', otherAdmin: 'adminB', superadmin: 'superadmin',
   otherOperator: 'operatorB', blockedOperator: 'operatorC',
 };
 
@@ -34,6 +34,7 @@ export async function apiDriver() {
       return send('session/get');
     },
     at: (d: Date) => { now = d; },
+    businessIdOf: (k: string) => s!.ids[k],
     idOf: async (k: string) => s!.uids[KEYS[k]],
     close: async () => { await s?.close(); },
     sessionGet: () => send('session/get'),
