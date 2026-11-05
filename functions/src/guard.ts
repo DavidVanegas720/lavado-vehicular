@@ -40,7 +40,7 @@ export class AuthGuard implements CanActivate {
     const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? '');
     if (!m) throw coded('unauthenticated');
     let t;
-    try { t = await auth.verifyIdToken(m[1]); } catch { throw coded('unauthenticated'); }
+    try { t = await auth.verifyIdToken(m[1]); } catch (e) { throw coded((e as { code?: string }).code === 'auth/user-disabled' ? 'forbidden' : 'unauthenticated'); }
     const { role, businessId } = t as { role?: string; businessId?: string };
     let business: Data, member: Data;
     if (role && role !== 'superadmin') {

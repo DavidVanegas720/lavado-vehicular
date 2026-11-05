@@ -195,3 +195,21 @@ test('operators: claims set, disabled follows active, deactivated operator forbi
     assert.equal((await s.call('session/get', await token(mail, pass))).status, 200);
   } finally { await s.close(); }
 });
+
+// E17: a disabled Auth user is a permission denial, not a lost session; a forged token stays unauthenticated.
+test('guard: deactivated operator token is forbidden, forged token unauthenticated', { skip }, async () => {
+  const s = await start();
+  try {
+    const mail = 'luis@test.local', pass = 'clave-segura-1';
+    const r = await s.call('operators/create', s.tokens.adminA, { name: 'Luis', email: mail, password: pass });
+    const luis = (await r.json()) as { id: string };
+    const old = await token(mail, pass);
+    assert.equal((await s.call('operators/setActive', s.tokens.adminA, { id: luis.id, active: false })).status, 200);
+    for (const path of ['session/get', 'shifts/open']) {
+      const x = await s.call(path, old, { openingCash: 0 });
+      assert.deepEqual([x.status, await x.json()], [403, { code: 'forbidden' }], path);
+    }
+    const f = await s.call('session/get', old.slice(0, -4) + 'AAAA');
+    assert.deepEqual([f.status, await f.json()], [401, { code: 'unauthenticated' }]);
+  } finally { await s.close(); }
+});
