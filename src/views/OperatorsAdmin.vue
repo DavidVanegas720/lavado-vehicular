@@ -9,6 +9,8 @@ const btn = `min-h-11 rounded bg-blue-700 px-4 font-bold text-white hover:bg-blu
 const btn2 = `min-h-11 rounded border border-slate-400 px-4 hover:bg-slate-100 motion-reduce:transition-none ${focus}`
 const card = 'rounded border border-slate-300 p-3 space-y-2'
 const msgs = { validation: 'El nombre debe tener entre 1 y 60 letras.' }
+// The create form checks name, email and password, so the server's `validation` covers all three.
+const createMsgs = { validation: 'Revisá los datos: nombre de 1 a 60 letras, un correo válido y una contraseña de al menos 8 caracteres.' }
 
 const ops = ref([])
 const error = ref('')
@@ -22,19 +24,19 @@ const busy = ref(false)
 async function load() { ops.value = await listOperators() }
 
 // Runs an action: clears messages, reloads on success, shows errorText on failure. Returns true on success.
-async function run(fn, ok) {
+async function run(fn, ok, overrides = msgs) {
   error.value = ''
   success.value = ''
   busy.value = true
   try { await fn(); await load(); success.value = ok; return true } catch (e) {
-    error.value = errorText(e, msgs)
+    error.value = errorText(e, overrides)
     if (e.code === 'not_found') try { await load() } catch { /* shown above */ }
     return false
   } finally { busy.value = false }
 }
 
 async function add() {
-  if (await run(() => createOperator({ name: newName.value, email: newEmail.value, password: newPassword.value }), 'Operador creado.')) {
+  if (await run(() => createOperator({ name: newName.value, email: newEmail.value, password: newPassword.value }), 'Operador creado.', createMsgs)) {
     newName.value = ''
     newEmail.value = ''
     newPassword.value = ''
