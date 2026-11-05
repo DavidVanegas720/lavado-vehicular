@@ -50,7 +50,7 @@ export async function createBusiness({ name, enabledVehicleTypes, monthlyFee, pa
   // same checks as operators (E6); the mock keeps no password
   admin.email = typeof adminEmail === 'string' ? adminEmail.trim().toLowerCase() : ''
   if (!EMAIL.test(admin.email) || admin.email.length > 254) throw coded('validation')
-  if (typeof adminPassword !== 'string' || adminPassword.length < 8 || adminPassword.length > 128) throw coded('validation')
+  if (typeof adminPassword !== 'string' || adminPassword.length < 12 || adminPassword.length > 128) throw coded('validation')
   if (db.users.some((u) => u.email === admin.email)) throw coded('email_taken') // Auth emails are global
   db.nextId += 2
   db.businesses.push(business)

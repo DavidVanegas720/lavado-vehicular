@@ -123,9 +123,15 @@ export default function superadminCases(d) {
     assert.deepEqual([c.categories, c.washTypes, c.washers], [[], [], []])
     await d.as('superadmin')
     await assert.rejects(() => d.createBusiness({ ...NEW, adminEmail: 'JEFE@test.local' }), code('email_taken'))
-    for (const bad of [{ adminEmail: 'nope' }, { adminPassword: '1234567' }, { enabledVehicleTypes: [] }])
+    for (const bad of [{ adminEmail: 'nope' }, { adminPassword: '12345678901' }, { enabledVehicleTypes: [] }])
       await assert.rejects(() => d.createBusiness({ ...NEW, adminEmail: 'otro@test.local', ...bad }), code('validation'))
     await assert.rejects(() => d.updateBusiness(nb.id, edit({ ...nb, enabledVehicleTypes: [] }, nb.shifts)), code('validation'))
+  })
+
+  test('admin password: 11 chars -> validation, 12 -> created (G6)', async () => {
+    await d.reset(); await d.as('superadmin')
+    await assert.rejects(() => d.createBusiness({ ...NEW, adminPassword: 'a'.repeat(11) }), code('validation'))
+    assert.ok((await d.createBusiness({ ...NEW, adminPassword: 'a'.repeat(12) })).id)
   })
 
   test('setAlertWindowDays bounds', async () => {

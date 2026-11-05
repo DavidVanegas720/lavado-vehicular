@@ -35,6 +35,11 @@ export default function operatorCases(d) {
     assert.deepEqual(await names(d), ['Laura', 'x'.repeat(60)])
   })
 
+  test('operator password of exactly 8 chars is still accepted (G6)', async () => {
+    await d.reset(); await d.as('admin')
+    assert.equal((await d.createOperator({ ...MARTA, password: '12345678' })).name, 'Marta')
+  })
+
   test('deactivated -> sign-in forbidden; reactivate restores', async () => {
     await d.reset(); await d.as('admin')
     const marta = await d.createOperator(MARTA)

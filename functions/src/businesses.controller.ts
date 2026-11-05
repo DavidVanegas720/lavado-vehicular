@@ -65,7 +65,7 @@ async function create(ctx: { uid: string }, b: Doc, now: Date) {
     shifts: [{ id: 'unico', name: 'Turno único', startHour: 6, endHour: 6 }],
   };
   const adminName = text(b.adminName, 60);
-  const { email, password } = loginInput({ email: b.adminEmail, password: b.adminPassword });
+  const { email, password } = loginInput({ email: b.adminEmail, password: b.adminPassword }, 12);
   const r = db.collection('businesses').doc();
   return createLogin(email, password, { role: 'admin', businessId: r.id }, async (uid) => {
     const batch = db.batch();

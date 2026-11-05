@@ -24,11 +24,11 @@ async function own(ctx: Ctx_, id: unknown) {
   return { ref, m };
 }
 
-// E6 input rules, shared with businesses/create (F5): email trimmed and lowercased, password 8-128.
-export function loginInput(b: Doc) {
+// E6 input rules, shared with businesses/create (F5): email trimmed and lowercased, password min-128 (operators 8, admins 12: G6).
+export function loginInput(b: Doc, min = 8) {
   const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
   if (!EMAIL.test(email) || email.length > 254) throw coded('validation');
-  if (typeof b.password !== 'string' || b.password.length < 8 || b.password.length > 128) throw coded('validation');
+  if (typeof b.password !== 'string' || b.password.length < min || b.password.length > 128) throw coded('validation');
   return { email, password: b.password };
 }
 

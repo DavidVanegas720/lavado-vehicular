@@ -28,7 +28,7 @@ async function load() {
   data.value = await listBusinesses()
   days.value = String(data.value.alertWindowDays)
 }
-async function run(fn, ok, overrides = { validation: 'Revisá los datos: nombre, al menos un tipo, valor en pesos, fecha, un correo válido y una contraseña de al menos 8 caracteres.' }) {
+async function run(fn, ok, overrides = { validation: 'Revisá los datos: nombre, al menos un tipo, valor en pesos, fecha, un correo válido y una contraseña de al menos 12 caracteres.' }) {
   error.value = ''; success.value = ''
   busy.value = true
   try { await fn(); success.value = ok; return true } catch (e) { error.value = errorText(e, overrides); return false } finally { busy.value = false }
@@ -105,7 +105,7 @@ onMounted(async () => { try { await load() } catch (e) { error.value = errorText
     <div><label for="nb-p" class="block font-bold">Pagado hasta</label><input id="nb-p" v-model="form.paidUntil" type="date" :class="input" /></div>
     <div><label for="nb-a" class="block font-bold">Nombre del administrador</label><input id="nb-a" v-model="form.adminName" type="text" maxlength="60" :class="input" /></div>
     <div><label for="nb-e" class="block font-bold">Correo del administrador</label><input id="nb-e" v-model="form.adminEmail" type="email" autocomplete="off" :class="input" /></div>
-    <div><label for="nb-w" class="block font-bold">Contraseña</label><input id="nb-w" v-model="form.adminPassword" type="password" autocomplete="new-password" aria-describedby="nb-w-h" :class="input" /><p id="nb-w-h" class="text-sm">Mínimo 8 caracteres.</p></div>
+    <div><label for="nb-w" class="block font-bold">Contraseña</label><input id="nb-w" v-model="form.adminPassword" type="password" autocomplete="new-password" aria-describedby="nb-w-h" :class="input" /><p id="nb-w-h" class="text-sm">Mínimo 12 caracteres.</p></div>
     <button type="submit" :disabled="busy" :class="btn">Crear negocio</button>
   </form>
 </template>
