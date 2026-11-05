@@ -5,8 +5,9 @@ import { useSessionStore } from '../stores/session.js'
 const store = useSessionStore()
 const router = useRouter()
 
-function leave() {
-  store.signOut()
+// Sign out first: the guard would send a signed-in user away from /sign-in.
+async function leave() {
+  await store.signOut()
   router.push('/sign-in')
 }
 </script>
