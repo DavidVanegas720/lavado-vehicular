@@ -24,6 +24,8 @@ if (emulators) {
   adminShifts(d);
   const { default: history } = await import('../../tests/contracts/cases/history.js' as string);
   history(d);
+  const { default: washerPayAdmin } = await import('../../tests/contracts/cases/washerPayAdmin.js' as string);
+  washerPayAdmin(d);
   test.after(() => d.close());
 }
 
@@ -215,5 +217,37 @@ test('guard: deactivated operator token is forbidden, forged token unauthenticat
     }
     const f = await s.call('session/get', old.slice(0, -4) + 'AAAA');
     assert.deepEqual([f.status, await f.json()], [401, { code: 'unauthenticated' }]);
+  } finally { await s.close(); }
+});
+
+// Admin payment races (criterion 7): the transaction reads the washer's payments, so the second writer sees the first.
+async function earnedPedro(s: Awaited<ReturnType<typeof start>>) {
+  const call = (path: string, body: unknown) => s.call(path, s.tokens.operatorA, body, new Date('2026-10-29T15:00:00Z'));
+  await call('shifts/open', { openingCash: 0 });
+  const o = (await (await call('orders/create', { id: randomUUID(), plate: 'ABC12D', cc: 150, categoryId: 'cat-200', washTypeId: 'full', washerId: 'pedro' })).json()) as { id: string };
+  await call('orders/finish', { orderId: o.id, paymentMethod: 'cash' }); // Pedro earns 10000
+}
+const outsidePay = (s: Awaited<ReturnType<typeof start>>, id: string, amount: number) =>
+  s.call('washerPay/recordOutsidePayment', s.tokens.adminA, { id, washerId: 'pedro', amount, period: 'current' }, new Date('2026-10-29T15:00:00Z'));
+
+test('two parallel outside payments of the whole balance with different ids: one 200, one validation, one doc', { skip }, async () => {
+  const s = await start();
+  try {
+    await earnedPedro(s);
+    const rs = await Promise.all([randomUUID(), randomUUID()].map((id) => outsidePay(s, id, 10000)));
+    assert.deepEqual(rs.map((r) => r.status).sort(), [200, 400]);
+    const docs = (await db.collection(`businesses/${s.ids.A}/washerPayments`).get()).docs;
+    assert.deepEqual(docs.map((x) => [x.data().amount, x.data().source]), [[10000, 'outside']]);
+  } finally { await s.close(); }
+});
+
+test('two parallel outside payments with the same id: both 200, one payment doc', { skip }, async () => {
+  const s = await start();
+  try {
+    await earnedPedro(s);
+    const id = randomUUID();
+    const rs = await Promise.all([outsidePay(s, id, 4000), outsidePay(s, id, 4000)]);
+    assert.deepEqual(rs.map((r) => r.status), [200, 200]);
+    assert.equal((await db.collection(`businesses/${s.ids.A}/washerPayments`).get()).size, 1);
   } finally { await s.close(); }
 });

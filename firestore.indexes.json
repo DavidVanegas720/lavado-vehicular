@@ -5,7 +5,11 @@
     { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "shiftKey", "order": "ASCENDING" } ] },
     { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" } ] }
+      { "fieldPath": "createdBy", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" } ] },
+    { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "paymentMethod", "order": "ASCENDING" }, { "fieldPath": "businessDate", "order": "ASCENDING" } ] },
+    { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "businessDate", "order": "ASCENDING" } ] }
   ],
   "fieldOverrides": []
 }

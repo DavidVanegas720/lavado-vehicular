@@ -53,6 +53,7 @@ test('2c. the route list and each route\'s roles are exactly the plan\'s (10-p8 
     'washerPay/listTillPayables': ['operator'], 'washerPay/recordTillPayment': ['operator'],
     ...Object.fromEntries(['createCategory', 'updateCategory', 'setCategoryActive', 'createWashType', 'updateWashType', 'setWashTypeActive', 'setPrice',
       'createWasher', 'updateWasher', 'setWasherActive'].map((n) => ['catalog/' + n, ['admin']])),
+    'washerPay/listBalances': ['admin'], 'washerPay/getLedger': ['admin'], 'washerPay/recordOutsidePayment': ['admin'], 'washerPay/recordCorrection': ['admin'], 'cashFlow/get': ['admin'],
     'shifts/listInstances': ['admin'], 'shifts/getInstance': ['admin'], 'history/getPlate': ['admin'],
     ...Object.fromEntries(['list', 'create', 'rename', 'setActive'].map((n) => ['operators/' + n, ['admin']])),
   };
