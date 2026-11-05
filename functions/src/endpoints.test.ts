@@ -251,3 +251,15 @@ test('two parallel outside payments with the same id: both 200, one payment doc'
     assert.equal((await db.collection(`businesses/${s.ids.A}/washerPayments`).get()).size, 1);
   } finally { await s.close(); }
 });
+
+test('washerId with a slash is a client error, not internal', { skip }, async () => {
+  const s = await start();
+  try {
+    const now = new Date('2026-10-29T15:00:00Z');
+    const bad = 'pedro/commissionHistory/000000';
+    const pay = await s.call('washerPay/recordOutsidePayment', s.tokens.adminA, { id: randomUUID(), washerId: bad, amount: 1000, period: 'current' }, now);
+    assert.equal(pay.status, 400);
+    const ledger = await s.call('washerPay/getLedger', s.tokens.adminA, { washerId: bad }, now);
+    assert.equal(ledger.status, 404);
+  } finally { await s.close(); }
+});

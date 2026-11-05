@@ -55,7 +55,7 @@ async function recordTillPayment(ctx: Ctx_, body: Doc, now: Date) {
       const state = shiftState(evs.docs.map((d) => d.data()).sort((a, b) => a.seq - b.seq) as any, shiftKey);
       if (state === 'not_opened') throw coded('shift_not_open');
       if (state === 'closed') throw coded('shift_closed');
-      const w = typeof body.washerId === 'string' && body.washerId ? await tx.get(t.collection('washers').doc(body.washerId)) : undefined;
+      const w = typeof body.washerId === 'string' && body.washerId && !body.washerId.includes('/') ? await tx.get(t.collection('washers').doc(body.washerId)) : undefined;
       if (!w?.exists || !w.data()!.active) throw coded('not_found');
       const washer = w.data()!;
       const businessDate = shiftKey.split('_')[0];
@@ -99,7 +99,7 @@ async function listBalances(ctx: Ctx_, now: Date) {
 
 async function getLedger(ctx: Ctx_, washerId: unknown) {
   const t = tenant(ctx);
-  if (typeof washerId !== 'string' || !washerId) throw coded('not_found');
+  if (typeof washerId !== 'string' || !washerId || washerId.includes('/')) throw coded('not_found');
   const w = await t.collection('washers').doc(washerId).get();
   if (!w.exists) throw coded('not_found');
   // shortcut: all orders of one washer, paginate by period when a washer passes ~5k orders
@@ -132,7 +132,7 @@ async function recordAdmin(ctx: Ctx_, body: Doc, now: Date, kind: 'payment' | 'c
     return await db.runTransaction(async (tx) => {
       const prior = await tx.get(ref);
       if (prior.exists) return replay(ctx, id, prior.data()!);
-      const w = typeof body.washerId === 'string' && body.washerId ? await tx.get(t.collection('washers').doc(body.washerId)) : undefined;
+      const w = typeof body.washerId === 'string' && body.washerId && !body.washerId.includes('/') ? await tx.get(t.collection('washers').doc(body.washerId)) : undefined;
       if (!w?.exists) throw coded(kind === 'payment' ? 'validation' : 'not_found');
       const washer = w.data()!;
       const businessDate = shiftOf(now, ctx.business.shifts).businessDate;
