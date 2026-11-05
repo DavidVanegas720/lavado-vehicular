@@ -2,6 +2,8 @@ import { authorize, now } from './session.js'
 import { coded } from './errors.js'
 import { assertShifts, bogotaDate } from '../domain/shift.js'
 import { billingAlerts } from '../domain/billing.js'
+import { CLIENT_ID } from './orders.js'
+import { EMAIL } from './operators.js'
 
 const SUPER = ['superadmin']
 const TYPES = ['motorcycle', 'car']
@@ -35,7 +37,7 @@ export async function listBusinesses() {
   }
 }
 
-export async function createBusiness({ name, enabledVehicleTypes, monthlyFee, paidUntil, adminName } = {}) {
+export async function createBusiness({ name, enabledVehicleTypes, monthlyFee, paidUntil, adminName, adminEmail, adminPassword } = {}) {
   const { db } = authorize(SUPER)
   const business = {
     id: `b${db.nextId}`, name: text(name, 60), enabledVehicleTypes: types(enabledVehicleTypes),
@@ -44,7 +46,12 @@ export async function createBusiness({ name, enabledVehicleTypes, monthlyFee, pa
     // placeholder: real shift hours pending David (00-master §6)
     shifts: [{ id: 'unico', name: 'Turno único', startHour: 6, endHour: 6 }],
   }
-  const admin = { id: `u${db.nextId + 1}`, name: text(adminName, 60), role: 'admin', businessId: business.id, active: true }
+  const admin = { id: `u${db.nextId + 1}`, name: text(adminName, 60), role: 'admin', businessId: business.id, active: true, email: '' }
+  // same checks as operators (E6); the mock keeps no password
+  admin.email = typeof adminEmail === 'string' ? adminEmail.trim().toLowerCase() : ''
+  if (!EMAIL.test(admin.email) || admin.email.length > 254) throw coded('validation')
+  if (typeof adminPassword !== 'string' || adminPassword.length < 8 || adminPassword.length > 128) throw coded('validation')
+  if (db.users.some((u) => u.email === admin.email)) throw coded('email_taken') // Auth emails are global
   db.nextId += 2
   db.businesses.push(business)
   db.users.push(admin)
@@ -58,6 +65,9 @@ export async function updateBusiness(id, { name, enabledVehicleTypes, monthlyFee
   const n = text(name, 60), t = types(enabledVehicleTypes), fee = money(monthlyFee, 0)
   if (!Array.isArray(shifts)) throw coded('validation')
   const rows = shifts.map((s) => ({ ...s, id: s.id ?? null, name: text(s.name, 40) }))
+  // F7: a sent id must be one of the business's own, no repeats
+  const sent = rows.map((r) => r.id).filter((x) => x !== null)
+  if (new Set(sent).size !== sent.length || sent.some((x) => !business.shifts.some((s) => s.id === x))) throw coded('validation')
   let next = db.nextId
   for (const r of rows) r.id ??= `s${next++}`
   try { assertShifts(rows) } catch { throw coded('validation') }
@@ -67,12 +77,20 @@ export async function updateBusiness(id, { name, enabledVehicleTypes, monthlyFee
   return out(business)
 }
 
-export async function recordBillingPayment(id, { amount, periodMonth, method, note, paidUntil } = {}) {
+export async function recordBillingPayment(id, { id: payId, amount, periodMonth, method, note, paidUntil } = {}) {
   const { db, user } = authorize(SUPER)
   const business = find(db, id)
+  if (payId !== undefined) {
+    if (!(typeof payId === 'string' && CLIENT_ID.test(payId))) throw coded('validation')
+    const prior = db.billingPayments.find((p) => p.id === payId && p.businessId === id)
+    if (prior) {
+      if (prior.recordedBy !== user.uid) throw coded('invalid_state')
+      return { ...prior } // replay: no second payment
+    }
+  }
   if (typeof periodMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)) throw coded('validation')
   const payment = {
-    businessId: id, amount: money(amount, 1), periodMonth, method: text(method, 30),
+    id: payId ?? `bp${db.nextId++}`, businessId: id, amount: money(amount, 1), periodMonth, method: text(method, 30),
     note: note ? text(note, 200) : '', paidUntil: date(paidUntil), recordedBy: user.uid, createdAt: now().toISOString(),
   }
   db.billingPayments.push(payment)

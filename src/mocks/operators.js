@@ -8,7 +8,7 @@ const clean = (v) => {
   return n
 }
 const view = ({ id, name, active, email = null }) => ({ id, name, active, email })
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const own = (db, business, id) =>
   db.users.find((u) => u.id === id && u.role === 'operator' && u.businessId === business.id) ??
   (() => { throw coded('not_found') })()

@@ -8,7 +8,9 @@ import operatorCases from './cases/operators.js'
 import adminShiftCases from './cases/adminShifts.js'
 import washerPayAdminCases from './cases/washerPayAdmin.js'
 import historyCases from './cases/history.js'
+import carCases from './cases/cars.js'
+import superadminCases from './cases/superadmin.js'
 
-for (const cases of [shiftsOpenCases, coreFlowCases, tillPayCases, catalogCases, operatorCases, adminShiftCases, washerPayAdminCases, historyCases]) {
+for (const cases of [shiftsOpenCases, coreFlowCases, tillPayCases, catalogCases, operatorCases, adminShiftCases, washerPayAdminCases, historyCases, carCases, superadminCases]) {
   cases(mockDriver)
 }
