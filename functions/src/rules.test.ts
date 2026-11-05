@@ -137,3 +137,24 @@ test('6. admins and operators never see billing data on any route they can call'
     }
   } finally { await s.close(); }
 });
+
+test('7. every backend query has its index (count and composite tuples)', () => {
+  // Counts occurrences, not lines: one line may hold several queries. Add the index to firestore.indexes.json and update 30 here on purpose.
+  const queries = files(src).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && !f.includes('/scripts/'))
+    .reduce((n, f) => n + (readFileSync(f, 'utf8').match(/\.where\(/g)?.length ?? 0), 0);
+  assert.equal(queries, 30, `found ${queries} .where( queries, expected 30: add the composite index to firestore.indexes.json and update the count (and plan 14 §4) in rules.test.ts test 7`);
+  const idx = (JSON.parse(readFileSync(join(src, '../../firestore.indexes.json'), 'utf8')) as
+    { indexes: { collectionGroup: string; fields: { fieldPath: string; order: string }[] }[] }).indexes;
+  const have = idx.map((i) => [i.collectionGroup, ...i.fields.map((f) => `${f.fieldPath} ${f.order}`)].join(' | '));
+  const want: [string, string[]][] = [
+    ['orders', ['washerId', 'status', 'businessDate']],
+    ['orders', ['createdBy', 'shiftKey']],
+    ['orders', ['createdBy', 'status']],
+    ['orders', ['status', 'paymentMethod', 'businessDate']],
+    ['orders', ['status', 'businessDate']],
+  ];
+  for (const [c, fs] of want) {
+    const key = [c, ...fs.map((f) => `${f} ASCENDING`)].join(' | ');
+    assert.ok(have.includes(key), `missing index in firestore.indexes.json: ${key}`);
+  }
+});
