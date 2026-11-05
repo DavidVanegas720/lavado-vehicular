@@ -28,6 +28,8 @@ if (emulators) {
   washerPayAdmin(d);
   const { default: cars } = await import('../../tests/contracts/cases/cars.js' as string);
   cars(d);
+  const { default: superadmin } = await import('../../tests/contracts/cases/superadmin.js' as string);
+  superadmin(d);
   test.after(() => d.close());
 }
 
@@ -263,5 +265,66 @@ test('washerId with a slash is a client error, not internal', { skip }, async ()
     assert.equal(pay.status, 400);
     const ledger = await s.call('washerPay/getLedger', s.tokens.adminA, { washerId: bad }, now);
     assert.equal(ledger.status, 404);
+  } finally { await s.close(); }
+});
+
+// Billing races (plan 13 criterion 7): payments and fee edits write separate fields inside transactions.
+const shifts = [{ id: 'unico', name: 'Turno único', startHour: 6, endHour: 6 }];
+const bizDoc = async (s: Awaited<ReturnType<typeof start>>) => (await db.doc(`businesses/${s.ids.A}`).get()).data()!;
+const billPay = (s: Awaited<ReturnType<typeof start>>, id: string, paidUntil = '2027-01-01') =>
+  s.call('businesses/recordBillingPayment', s.tokens.superadmin, { businessId: s.ids.A, id, amount: 150000, periodMonth: '2026-11', method: 'cash', note: '', paidUntil }, new Date('2026-10-29T15:00:00Z'));
+const fee = (s: Awaited<ReturnType<typeof start>>, monthlyFee: number) =>
+  s.call('businesses/update', s.tokens.superadmin, { businessId: s.ids.A, name: 'Negocio A', enabledVehicleTypes: ['motorcycle'], monthlyFee, shifts });
+
+test('billing: the same payment id sent twice in parallel is one doc, one result, one paidUntil', { skip }, async () => {
+  const s = await start();
+  try {
+    const id = randomUUID();
+    const rs = await Promise.all([billPay(s, id), billPay(s, id)]);
+    assert.deepEqual(rs.map((r) => r.status), [200, 200]);
+    assert.deepEqual(await rs[0].json(), await rs[1].json());
+    assert.equal((await db.collection(`businesses/${s.ids.A}/billingPayments`).get()).size, 1);
+    assert.equal((await bizDoc(s)).billing.paidUntil, '2027-01-01');
+  } finally { await s.close(); }
+});
+
+test('billing: a retry with an older paidUntil under the same id does not overwrite paidUntil', { skip }, async () => {
+  const s = await start();
+  try {
+    const first = randomUUID();
+    assert.equal((await billPay(s, first, '2027-01-01')).status, 200);
+    assert.equal((await billPay(s, randomUUID(), '2027-03-01')).status, 200);
+    assert.equal((await billPay(s, first, '2027-01-01')).status, 200); // replay
+    const b = await bizDoc(s);
+    assert.equal(b.billing.paidUntil, '2027-03-01');
+    assert.equal((await db.collection(`businesses/${s.ids.A}/billingPayments`).get()).size, 2);
+  } finally { await s.close(); }
+});
+
+test('billing: two parallel fee edits keep one fee; a parallel fee edit and payment keep both fields', { skip }, async () => {
+  const s = await start();
+  try {
+    assert.deepEqual((await Promise.all([fee(s, 111), fee(s, 222)])).map((r) => r.status), [200, 200]);
+    let b = await bizDoc(s);
+    assert.ok([111, 222].includes(b.billing.monthlyFee));
+    assert.equal(b.billing.paidUntil, '2026-11-01');
+    const rs = await Promise.all([fee(s, 333), billPay(s, randomUUID())]);
+    assert.deepEqual(rs.map((r) => r.status), [200, 200]);
+    b = await bizDoc(s);
+    assert.deepEqual([b.billing.monthlyFee, b.billing.paidUntil], [333, '2027-01-01']);
+  } finally { await s.close(); }
+});
+
+test('businesses/create: Auth claims are role admin and the new business id; members doc holds no password', { skip }, async () => {
+  const s = await start();
+  try {
+    const r = await s.call('businesses/create', s.tokens.superadmin, { name: 'Nuevo', enabledVehicleTypes: ['car'], monthlyFee: 1000, paidUntil: '2026-11-30', adminName: 'Jefe', adminEmail: 'jefe@test.local', adminPassword: 'clave-segura-1' });
+    const nb = (await r.json()) as { id: string };
+    assert.equal(r.status, 200);
+    const uid = (await auth.getUserByEmail('jefe@test.local')).uid;
+    assert.deepEqual((await auth.getUser(uid)).customClaims, { role: 'admin', businessId: nb.id });
+    const m = (await db.doc(`businesses/${nb.id}/members/${uid}`).get()).data()!;
+    assert.deepEqual([m.role, m.active, m.createdBy], ['admin', true, s.uids.superadmin]);
+    assert.equal(JSON.stringify(m).includes('clave-segura-1'), false);
   } finally { await s.close(); }
 });

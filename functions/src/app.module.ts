@@ -9,6 +9,7 @@ import { WasherPayController } from './washerPay.controller.js';
 import { OperatorsController } from './operators.controller.js';
 import { HistoryController } from './history.controller.js';
 import { CashFlowController } from './cashFlow.controller.js';
+import { BusinessesController } from './businesses.controller.js';
 
-@Module({ controllers: [SessionController, ShiftsController, CatalogController, OrdersController, WasherPayController, OperatorsController, HistoryController, CashFlowController], providers: [{ provide: APP_GUARD, useClass: AuthGuard }] })
+@Module({ controllers: [SessionController, ShiftsController, CatalogController, OrdersController, WasherPayController, OperatorsController, HistoryController, CashFlowController, BusinessesController], providers: [{ provide: APP_GUARD, useClass: AuthGuard }] })
 export class AppModule {}

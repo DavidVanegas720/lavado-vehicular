@@ -56,6 +56,7 @@ test('2c. the route list and each route\'s roles are exactly the plan\'s (10-p8 
     'washerPay/listBalances': ['admin'], 'washerPay/getLedger': ['admin'], 'washerPay/recordOutsidePayment': ['admin'], 'washerPay/recordCorrection': ['admin'], 'cashFlow/get': ['admin'],
     'shifts/listInstances': ['admin'], 'shifts/getInstance': ['admin'], 'history/getPlate': ['admin'],
     ...Object.fromEntries(['list', 'create', 'rename', 'setActive'].map((n) => ['operators/' + n, ['admin']])),
+    ...Object.fromEntries(['list', 'create', 'update', 'setBlocked', 'setAlertWindowDays', 'listBillingPayments', 'recordBillingPayment'].map((n) => ['businesses/' + n, ['superadmin']])),
   };
   assert.deepEqual(routes.map((r) => r.path).sort(), Object.keys(plan).sort());
   for (const r of routes) assert.deepEqual([...Reflect.getMetadata('roles', r.handler)].sort(), plan[r.path], r.path);
@@ -102,3 +103,37 @@ test('4. rules deny clients: GET and PATCH on a business doc are 403; blocked, r
   } finally { await s.close(); }
 });
 
+
+test('5. blocked business: every route but session/get is 403 business_blocked (superadmin routes too); unblock restores the data', { skip }, async () => {
+  const s = await start();
+  try {
+    const refA = db.doc(`businesses/${s.ids.A}`);
+    const { _: _doc, ...before } = (await dump(refA)) as Record<string, unknown>;
+    const setBlocked = (blocked: boolean) => s.call('businesses/setBlocked', s.tokens.superadmin, { businessId: s.ids.A, blocked, reason: 'Sin pago' });
+    assert.equal((await setBlocked(true)).status, 200);
+    for (const who of ['adminA', 'operatorA']) {
+      for (const r of routes.filter((x) => x.path !== 'session/get')) {
+        const res = await s.call(r.path, s.tokens[who], { businessId: s.ids.A, openingCash: 0 });
+        assert.deepEqual([res.status, await res.json()], [403, { code: 'business_blocked' }], `${who} ${r.path}`);
+      }
+      const ses = await s.call('session/get', s.tokens[who]);
+      assert.deepEqual([ses.status, ((await ses.json()) as { businessBlocked: boolean }).businessBlocked], [200, true]);
+    }
+    assert.equal((await setBlocked(false)).status, 200);
+    const { _: _after, ...after } = (await dump(refA)) as Record<string, unknown>;
+    assert.deepEqual(after, before);
+  } finally { await s.close(); }
+});
+
+test('6. admins and operators never see billing data on any route they can call', { skip }, async () => {
+  const s = await start();
+  try {
+    for (const who of ['adminA', 'operatorA']) {
+      const role = who.startsWith('admin') ? 'admin' : 'operator';
+      for (const r of routes.filter((x) => Reflect.getMetadata('roles', x.handler).includes(role))) {
+        const body = await (await s.call(r.path, s.tokens[who], {})).text();
+        assert.ok(!/paidUntil|monthlyFee|billing/.test(body), `${r.path} leaked billing to ${who}`);
+      }
+    }
+  } finally { await s.close(); }
+});

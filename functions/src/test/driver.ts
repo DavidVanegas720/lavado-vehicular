@@ -35,7 +35,7 @@ export async function apiDriver() {
     },
     at: (d: Date) => { now = d; },
     businessIdOf: (k: string) => s!.ids[k],
-    idOf: async (k: string) => s!.uids[KEYS[k]],
+    idOf: (k: string) => s!.uids[KEYS[k]],
     close: async () => { await s?.close(); },
     sessionGet: () => send('session/get'),
     ...makeApi(send),
